@@ -1,6 +1,66 @@
+
+name: fitness-app
+
 services:
-  fitnessprofileservice:
-    image: ${DOCKER_REGISTRY-}fitnessprofileservice
+  fitness-profile-service:
     build:
       context: .
       dockerfile: FitnessProfileService/Dockerfile
+    networks:
+      - fitness-network
+
+  identity-service:
+    build:
+      context: .
+      dockerfile: IdentityService/Dockerfile
+    networks:
+      - fitness-network
+
+  nutrition-service:
+    build:
+      context: .
+      dockerfile: NutritionService/Dockerfile
+    networks:
+      - fitness-network
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: PaymentService/Dockerfile
+    networks:
+      - fitness-network
+
+  progress-service:
+    build:
+      context: .
+      dockerfile: ProgressService/Dockerfile
+    networks:
+      - fitness-network
+
+  training-service:
+    build:
+      context: .
+      dockerfile: TrainingService/Dockerfile
+    networks:
+      - fitness-network
+
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}
+    volumes:
+      - fitness-sql-data:/var/opt/mssql
+    networks:
+      - fitness-network
+
+networks:
+  fitness-network:
+    driver: bridge
+
+volumes:
+  fitness-sql-data:
+    external: true
+    name: fitness-sql-data-v2
