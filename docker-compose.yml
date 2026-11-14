@@ -56,11 +56,11 @@ services:
     networks:
       - fitness-network
 
-networks:
-  fitness-network:
-    driver: bridge
-
 volumes:
   fitness-sql-data:
     external: true
     name: fitness-sql-data-v2
+
+networks:
+  fitness-network:
+    driver: bridge
