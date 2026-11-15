@@ -1,7 +1,11 @@
 <Solution>
-  <Project Path="docker-compose.dcproj">
-    <Build />
-  </Project>
+  <Folder Name="/TrainingServices/">
+    <Project Path="TrainingService.Api\TrainingService.Api.csproj" Type="Classic C#" />
+    <Project Path="TrainingService.Application\TrainingService.Application.csproj" Type="Classic C#" />
+    <Project Path="TrainingService.Domain\TrainingService.Domain.csproj" Type="Classic C#" />
+    <Project Path="TrainingService.Infrastructure\TrainingService.Infrastructure.csproj" Type="Classic C#" />
+  </Folder>
+  <Project Path="docker-compose.dcproj" />
   <Project Path="FitnessProfileService/FitnessProfileService.csproj" />
   <Project Path="IdentityService/IdentityService.csproj" />
   <Project Path="NutritionService/NutritionService.csproj" />
