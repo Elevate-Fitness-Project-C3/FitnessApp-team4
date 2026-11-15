@@ -11,6 +11,8 @@
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="12.2.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
+    <PackageReference Include="Mapster" Version="10.0.14" />
+    <PackageReference Include="Mapster.DependencyInjection" Version="10.0.14" />
     <PackageReference Include="MediatR" Version="12.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
@@ -26,11 +28,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Common\Interfaces\" />
     <Folder Include="Features\Auth\Login\" />
     <Folder Include="Features\Auth\Logout\" />
     <Folder Include="Features\Auth\GetCurrentUser\" />
     <Folder Include="Features\Auth\RefreshToken\" />
-    <Folder Include="Features\Auth\Register\" />
   </ItemGroup>
 
 </Project>

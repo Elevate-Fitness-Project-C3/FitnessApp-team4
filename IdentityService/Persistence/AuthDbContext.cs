@@ -1,4 +1,6 @@
-﻿namespace IdentityService.Persistence;
+﻿using IdentityService.Persistence.Configurations;
+
+namespace IdentityService.Persistence;
 
 public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
 {
@@ -9,9 +11,8 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, st
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.ApplyConfiguration(new ApplicationUserConfiguration());
 
-        builder.Entity<ApplicationUser>()
-            .ToTable("Users");
 
         builder.Entity<IdentityRole>()
             .ToTable("Roles");

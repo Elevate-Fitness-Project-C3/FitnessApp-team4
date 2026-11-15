@@ -1,14 +1,33 @@
+using IdentityService.Common.Exceptions;
+using IdentityService.Common.Extensions;
+using IdentityService.Persistence.Seeding;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+builder.Services
+    .AddApplicationServices()
+    .AddPersistence(builder.Configuration)
+    .AddIdentityServices();
 
-builder.Services.AddApplicationServices();
-
-builder.Services.AddPersistence(builder.Configuration);
-
-builder.Services.AddIdentityServices();
+// Register centralized exception handling.
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// Handle exceptions raised during HTTP request processing.
+app.UseExceptionHandler();
+
+// Ensure required identity roles exist before accepting requests.
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var roleManager = scope.ServiceProvider
+        .GetRequiredService<RoleManager<IdentityRole>>();
+
+    await IdentityRoleSeeder.SeedAsync(roleManager);
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -23,5 +42,5 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.MapControllers();
 app.Run();
