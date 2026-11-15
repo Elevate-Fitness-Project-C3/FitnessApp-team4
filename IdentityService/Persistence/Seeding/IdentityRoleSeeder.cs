@@ -1,67 +1,43 @@
-﻿using Microsoft.Data.SqlClient;
-
+﻿
+using Microsoft.Data.SqlClient;
 namespace IdentityService.Persistence.Seeding;
 
 public static class IdentityRoleSeeder
 {
-    public static async Task SeedAsync(
-        RoleManager<IdentityRole> roleManager)
+    public static async Task SeedAsync(RoleManager<IdentityRole> roleManager)
     {
         if (await roleManager.RoleExistsAsync(RoleNames.User))
             return;
-
         try
         {
-            var result = await roleManager.CreateAsync(
-                new IdentityRole(RoleNames.User));
-
+            var result = await roleManager.CreateAsync(new IdentityRole(RoleNames.User));
             if (result.Succeeded)
                 return;
-
-            if (IsDuplicateRoleError(result) &&
-                await roleManager.RoleExistsAsync(RoleNames.User))
-            {
+            if (IsDuplicateRoleError(result) && await roleManager.RoleExistsAsync(RoleNames.User))
                 return;
-            }
-
             throw CreateSeedingException(RoleNames.User, result);
         }
-        catch (DbUpdateException exception)
-            when (IsDuplicateRoleViolation(exception))
+        catch (DbUpdateException exception) when (IsDuplicateRoleViolation(exception))
         {
-            // Another service instance may have created the role.
+            foreach (var entry in exception.Entries)
+            {
+                entry.State = EntityState.Detached;
+            }
             if (!await roleManager.RoleExistsAsync(RoleNames.User))
                 throw;
         }
     }
-
-    private static bool IsDuplicateRoleError(
-        IdentityResult result)
+    private static bool IsDuplicateRoleError(IdentityResult result)
     {
-        return result.Errors.Any(error =>
-            error.Code ==
-            nameof(IdentityErrorDescriber.DuplicateRoleName));
+        return result.Errors.Any(error => error.Code == nameof(IdentityErrorDescriber.DuplicateRoleName));
     }
-
-    private static bool IsDuplicateRoleViolation(
-        DbUpdateException exception)
+    private static bool IsDuplicateRoleViolation(DbUpdateException exception)
     {
-        return exception.InnerException is SqlException sqlException
-            && sqlException.Number is 2601 or 2627
-            && sqlException.Message.Contains(
-                "RoleNameIndex",
-                StringComparison.OrdinalIgnoreCase);
+        return exception.InnerException is SqlException sqlException && sqlException.Number is 2601 or 2627 && sqlException.Message.Contains("RoleNameIndex", StringComparison.OrdinalIgnoreCase);
     }
-
-    private static InvalidOperationException CreateSeedingException(
-        string roleName,
-        IdentityResult result)
+    private static InvalidOperationException CreateSeedingException(string roleName, IdentityResult result)
     {
-        var errors = string.Join(
-            "; ",
-            result.Errors.Select(error => error.Description));
-
-        return new InvalidOperationException(
-            $"Failed to seed role '{roleName}': {errors}");
+        var errors = string.Join("; ", result.Errors.Select(error => error.Description));
+        return new InvalidOperationException($"Failed to seed role '{roleName}': {errors}");
     }
 }
