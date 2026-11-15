@@ -1,10 +1,5 @@
 ﻿
-using IdentityService.Common.Results;
-
 namespace IdentityService.Features.Auth.Register;
 
-public sealed record RegisterUserCommand(
-    string FirstName,
-    string LastName,
-    string Email,
-    string Password) : IRequest<Result<RegisterUserResponse?>>;
+public sealed record RegisterUserCommand(string FirstName, string LastName, string Email, string Password)
+                                        : IRequest<Result<RegisterUserResponse>>;
