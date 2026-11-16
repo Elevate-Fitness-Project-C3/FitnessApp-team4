@@ -1,7 +1,7 @@
-﻿
+
 namespace IdentityService.Common.Behaviors;
 
-public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> where TRequest : notnull
+public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse> where TRequest : notnull where TResponse : IFailable<TResponse>
 {
     private readonly IReadOnlyList<IValidator<TRequest>> _validators;
     public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
@@ -22,7 +22,7 @@ public sealed class ValidationBehavior<TRequest, TResponse> : IPipelineBehavior<
             failures.AddRange(result.Errors);
         }
         if (failures.Count > 0)
-            throw new ValidationException(failures);
+            return TResponse.FromErrors(failures.Select(x => Error.Validation($"Validation.{x.PropertyName}", x.ErrorMessage)));
         return await next();
     }
 }

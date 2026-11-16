@@ -1,22 +1,18 @@
-using Microsoft.AspNetCore.Identity.UI.Services;
 using IdentityService.Security.Tokens;
 namespace IdentityService.Email;
-public sealed class AuthEmailSender(EmailVerificationCodeStore codes, IEmailSender sender, ILogger<AuthEmailSender> logger)
+public sealed class AuthEmailSender(EmailSender sender, IOptions<IdentityService.Security.Options.EmailConfirmationTokenOptions> options, ILogger<AuthEmailSender> logger)
 {
-    public async Task<bool> SendAsync(ApplicationUser user, bool reset = false)
+    public async Task SendAsync(ApplicationUser user, OtpPurpose purpose, string code, CancellationToken cancellationToken)
     {
-        var code = await codes.IssueAsync(user, reset);
-        if (code is null) return false;
-        var body = EmailBodyBuilder.GenerateEmailBody(reset ? "ForgetPassword" : "EmailConfirmation", user.FirstName, code);
+        var reset = purpose == OtpPurpose.ResetPassword;
+        var body = EmailBodyBuilder.GenerateEmailBody(reset ? "ForgetPassword" : "EmailConfirmation", user.FirstName, code, options.Value.ExpirationMinutes);
         try
         {
-            await sender.SendEmailAsync(user.Email!, reset ? "Fitness App: Reset password" : "Fitness App: Confirm email", body);
-            return true;
+            await sender.SendEmailAsync(user.Email!, reset ? "Fitness App: Reset password" : "Fitness App: Confirm email", body, cancellationToken);
         }
-        catch (System.Net.Mail.SmtpException ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogWarning(ex, "Authentication email delivery failed for user {UserId}. SMTP status: {StatusCode}", user.Id, ex.StatusCode);
-            return false;
+            logger.LogWarning("Authentication email delivery failed. UserId={UserId} ErrorType={ErrorType}", user.Id, ex.GetType().Name);
         }
     }
 }

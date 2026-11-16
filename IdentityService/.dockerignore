@@ -1,0 +1,15 @@
+.git
+.vs
+**/bin
+**/obj
+**/*.user
+**/*.pem
+**/*.pfx
+**/*.key
+**/.env
+**/appsettings.Local.json
+
+**/.env.*
+**/*.p12
+**/*.snk
+**/TestResults

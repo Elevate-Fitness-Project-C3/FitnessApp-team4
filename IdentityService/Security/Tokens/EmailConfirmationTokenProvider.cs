@@ -1,8 +1,5 @@
-﻿using IdentityService.Identity;
+using IdentityService.Identity;
 using IdentityService.Security.Options;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
 
 namespace IdentityService.Security.Tokens;
 

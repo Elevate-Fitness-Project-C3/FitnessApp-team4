@@ -1,6 +1,4 @@
-using IdentityService.Email;
 using IdentityService.Security.Tokens;
-using IdentityService.Features.Auth.Login;
 namespace IdentityService.Features.Auth.Logout;
 internal sealed class LogoutCommandHandler(IJwtProvider jwt, AuthDbContext db) : IRequestHandler<LogoutCommand, Result<Success>>
 {
@@ -8,7 +6,7 @@ internal sealed class LogoutCommandHandler(IJwtProvider jwt, AuthDbContext db) :
     {
         cancellationToken.ThrowIfCancellationRequested();
         var userId = jwt.ValidateToken(request.Token);
-        if (userId is null) return AuthErrors.InvalidRefreshToken;
+        if (userId is null) return AuthErrors.InvalidAccessToken;
         var hash = RefreshTokenIssuer.Hash(request.RefreshToken);
         var now = DateTime.UtcNow;
         var changed = await db.RefreshTokens.Where(x => x.UserId == userId && x.TokenHash == hash && x.RevokedOn == null && x.ExpiresOn > now)

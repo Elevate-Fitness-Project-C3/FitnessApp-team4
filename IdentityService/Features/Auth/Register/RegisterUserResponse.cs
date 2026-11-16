@@ -6,5 +6,5 @@ public sealed record RegisterUserResponse(
     string FirstName,
     string LastName,
     bool EmailVerificationRequired,
-    bool EmailSent = false
+    bool EmailQueued = false
 );

@@ -1,7 +1,5 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using IdentityService.Security.Options;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 
 namespace IdentityService.Security.Keys;
 
