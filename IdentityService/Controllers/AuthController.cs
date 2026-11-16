@@ -9,7 +9,7 @@ using IdentityService.Features.Auth.ResetPassword;
 using IdentityService.Features.Auth.RefreshToken;
 using IdentityService.Features.Auth.Logout;
 using IdentityService.Features.Auth.Register;
-using IdentityService.Common.Responses;
+using BuildingBlocks.AspNetCore.Responses;
 namespace IdentityService.Controllers;
 
 [ApiController]

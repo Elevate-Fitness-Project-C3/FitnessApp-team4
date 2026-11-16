@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.Data.SqlClient;
 namespace IdentityService.Persistence.Seeding;
 

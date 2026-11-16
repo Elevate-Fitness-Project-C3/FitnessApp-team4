@@ -100,7 +100,7 @@ public static class DependencyInjection
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
-                var response = IdentityService.Common.Responses.ApiResponse<object>.Fail("Too many requests.", StatusCodes.Status429TooManyRequests);
+                var response = BuildingBlocks.AspNetCore.Responses.ApiResponse<object>.Fail("Too many requests.", StatusCodes.Status429TooManyRequests);
                 await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
             };
             options.AddPolicy(RateLimitPolicies.Auth, context => RateLimitPartition.GetFixedWindowLimiter(

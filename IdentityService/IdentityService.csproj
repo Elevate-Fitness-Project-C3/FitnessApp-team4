@@ -27,4 +27,15 @@
   <ItemGroup>
     <EmbeddedResource Include="Email/Templates/*.html" />
   </ItemGroup>
+	<ItemGroup>
+		<Reference Include="BuildingBlocks.Core">
+			<HintPath>Libraries\BuildingBlocks.Core.dll</HintPath>
+		</Reference>
+		<Reference Include="BuildingBlocks.AspNetCore">
+			<HintPath>Libraries\BuildingBlocks.AspNetCore.dll</HintPath>
+		</Reference>
+		<Reference Include="BuildingBlocks.MediatR">
+			<HintPath>Libraries\BuildingBlocks.MediatR.dll</HintPath>
+		</Reference>
+	</ItemGroup>
 </Project>

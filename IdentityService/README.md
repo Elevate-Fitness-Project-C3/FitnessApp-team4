@@ -1,3 +1,5 @@
+> Development setup has changed in this candidate. See the root README for the current Docker workflow. The original review notes below are retained for API/security context.
+
 # IdentityService — authentication review revision
 .NET 10, SQL Server, ASP.NET Core Identity, MediatR, vertical slices. No custom repository or unit of work.
 
