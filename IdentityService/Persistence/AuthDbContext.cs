@@ -1,16 +1,27 @@
-﻿using IdentityService.Persistence.Configurations;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using IdentityService.Persistence.Configurations;
 
 namespace IdentityService.Persistence;
 
-public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>
+public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, string>, IDataProtectionKeyContext
 {
     public AuthDbContext(DbContextOptions<AuthDbContext> options): base(options)
     {
     }
 
+    public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<DataProtectionKey>().ToTable("DataProtectionKeys");
+        builder.Entity<RefreshToken>(entity =>
+        {
+            entity.ToTable("RefreshTokens");
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId);
+        });
         builder.ApplyConfiguration(new ApplicationUserConfiguration());
 
 

@@ -1,12 +1,17 @@
 ﻿global using FluentValidation;
 global using FluentValidation.Results;
+global using ValidationFailure = FluentValidation.Results.ValidationFailure;
 global using IdentityService.Common.Behaviors;
 global using IdentityService.Common.Results;
 global using IdentityService.Identity;
 global using IdentityService.Persistence;
 global using Mapster;
 global using MediatR;
+global using Microsoft.AspNetCore.Authentication.JwtBearer;
+global using Microsoft.AspNetCore.DataProtection;
 global using Microsoft.AspNetCore.Diagnostics;
 global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.Options;
+global using Microsoft.IdentityModel.Tokens;

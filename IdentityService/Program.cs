@@ -1,18 +1,15 @@
-
+using IdentityService.Common;
 using IdentityService.Common.Exceptions;
-using IdentityService.Common.Extensions;
-using IdentityService.Extensions;
 using IdentityService.Persistence.Seeding;
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
-builder.Services
-    .AddApplicationServices(typeof(Program).Assembly)
-    .AddPersistence(builder.Configuration)
-    .AddIdentityServices();
+builder.Services.AddDependencies(builder.Configuration);
 // Register centralized exception handling.
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
 var app = builder.Build();
 // Handle exceptions raised during HTTP request processing.
 app.UseExceptionHandler();
@@ -31,5 +28,9 @@ if (app.Environment.IsDevelopment())
     });
 }
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 app.Run();

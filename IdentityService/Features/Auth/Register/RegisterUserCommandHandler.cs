@@ -1,11 +1,11 @@
-﻿
+using IdentityService.Email;
 using IdentityService.Features.Users;
 using IdentityService.Features.Users.AssignUserRole;
 using IdentityService.Features.Users.CheckEmailExists;
 using IdentityService.Features.Users.CreateUser;
 namespace IdentityService.Features.Auth.Register;
 
-internal sealed class RegisterUserCommandHandler(ISender sender, AuthDbContext dbContext) : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
+internal sealed class RegisterUserCommandHandler(ISender sender, AuthDbContext dbContext, AuthEmailSender emailSender) : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
 {
     public async Task<Result<RegisterUserResponse>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
     {
@@ -30,6 +30,7 @@ internal sealed class RegisterUserCommandHandler(ISender sender, AuthDbContext d
             LastName: user.LastName,
             EmailVerificationRequired: !user.EmailConfirmed);
         await transaction.CommitAsync(cancellationToken);
-        return Result<RegisterUserResponse>.Success(response);
+        var sent = await emailSender.SendAsync(user);
+        return Result<RegisterUserResponse>.Success(response with { EmailSent = sent });
     }
 }
