@@ -1,4 +1,4 @@
-﻿
+
 using IdentityService.Common.Responses;
 namespace IdentityService.Common.Exceptions;
 
@@ -17,14 +17,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         {
             var errors = validationException.Errors
                 .GroupBy(error => error.PropertyName)
-                .ToDictionary(group => group.Key, group => group.Select(error => error.ErrorMessage).ToArray());
+                .ToDictionary(group => $"Validation.{group.Key}", group => group.Select(error => error.ErrorMessage).ToArray());
             var validationResponse = ApiResponse<object>.Fail(message: "Validation failed.", statusCode:
                                         StatusCodes.Status400BadRequest, errors: errors);
             httpContext.Response.StatusCode = validationResponse.StatusCode;
             await httpContext.Response.WriteAsJsonAsync(validationResponse, cancellationToken);
             return true;
         }
-        logger.LogError(exception, "Unhandled exception occurred. TraceId: {TraceId}", httpContext.TraceIdentifier);
+        logger.LogError("Unhandled exception occurred. TraceId={TraceId} ErrorType={ErrorType}", httpContext.TraceIdentifier, exception.GetType().Name);
         var response = ApiResponse<object>.Fail(message: "An unexpected error occurred.", statusCode:
                                         StatusCodes.Status500InternalServerError);
         httpContext.Response.StatusCode = response.StatusCode;

@@ -1,35 +1,129 @@
-﻿using MapsterMapper;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using IdentityService.Security.Options;
+using IdentityService.Security.Tokens;
+using IdentityService.Security.Keys;
+using IdentityService.Email;
+using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Reflection;
-namespace IdentityService.Common.Extensions;
+namespace IdentityService.Common;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services, Assembly assembly)
+    public static IServiceCollection AddDependencies(this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(assembly);
-        AddMediatRServices(services, assembly);
-        AddValidationServices(services, assembly);
-        AddMapping(services, assembly);
+        services.AddApplication();
+        services.AddPersistence(configuration, isDevelopment);
+        services.AddIdentityConfiguration();
+        services.AddJwtConfiguration();
+        services.AddAuthRateLimiting(configuration);
+        services.AddEmailConfiguration();
         return services;
     }
-    private static void AddMediatRServices(IServiceCollection services, Assembly assembly)
+    private static void AddApplication(this IServiceCollection services)
     {
-        services.AddMediatR(config =>
-        {
-            config.RegisterServicesFromAssembly(assembly);
-            config.AddOpenBehavior(typeof(ValidationBehavior<,>));
-        });
-    }
-    private static void AddValidationServices(IServiceCollection services, Assembly assembly)
-    {
+        var assembly = Assembly.GetExecutingAssembly();
+        services.AddMediatR(config => { config.RegisterServicesFromAssembly(assembly); config.AddOpenBehavior(typeof(ValidationBehavior<,>)); });
         services.AddValidatorsFromAssembly(assembly);
     }
-    private static void AddMapping(IServiceCollection services, Assembly assembly)
+    private static void AddPersistence(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
     {
-        var config = TypeAdapterConfig.GlobalSettings;
-        config.Scan(assembly);
-        services.AddSingleton(config);
-        services.AddScoped<IMapper, ServiceMapper>();
+        var connection = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connection)) throw new InvalidOperationException("Database connection configuration is required.");
+        services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connection));
+        var protection = services.AddDataProtection().SetApplicationName("IdentityService").PersistKeysToDbContext<AuthDbContext>();
+        var certificatePath = configuration["DataProtection:CertificatePath"];
+        if (!string.IsNullOrWhiteSpace(certificatePath))
+            protection.ProtectKeysWithCertificate(X509CertificateLoader.LoadPkcs12FromFile(certificatePath, configuration["DataProtection:CertificatePassword"]));
+        else if (!isDevelopment)
+            throw new InvalidOperationException("Data protection certificate is required outside Development.");
+    }
+    private static void AddIdentityConfiguration(this IServiceCollection services)
+    {
+        services.AddIdentityCore<ApplicationUser>(options =>
+        {
+            options.User.RequireUniqueEmail = true;
+            options.Lockout.AllowedForNewUsers = true;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+            options.SignIn.RequireConfirmedEmail = true;
+            options.Tokens.EmailConfirmationTokenProvider = EmailConfirmationTokenProvider.ProviderName;
+        }).AddRoles<IdentityRole>().AddEntityFrameworkStores<AuthDbContext>().AddSignInManager().AddDefaultTokenProviders()
+            .AddTokenProvider<EmailConfirmationTokenProvider>(EmailConfirmationTokenProvider.ProviderName);
+    }
+    private static void AddJwtConfiguration(this IServiceCollection services)
+    {
+        services.AddOptions<JwtOptions>().BindConfiguration(JwtOptions.SectionName)
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Issuer)
+                && !string.IsNullOrWhiteSpace(x.Audience)
+                && x.AccessTokenExpirationMinutes is > 0 and <= 1440
+                && x.RefreshTokenExpirationDays is > 0 and <= 365
+                && x.MaxActiveRefreshTokens is >= 1 and <= 100,
+                "Invalid JWT configuration.").ValidateOnStart();
+        services.AddOptions<RsaKeyOptions>().BindConfiguration(RsaKeyOptions.SectionName)
+            .Validate(x => !string.IsNullOrWhiteSpace(x.PrivateKeyPath)
+                && !string.IsNullOrWhiteSpace(x.PublicKeyPath),
+                "Invalid RSA key configuration.").ValidateOnStart();
+        services.AddSingleton<RsaKeyProvider>();
+        services.AddOptions<EmailConfirmationTokenOptions>().BindConfiguration(EmailConfirmationTokenOptions.SectionName)
+            .Validate(x => x.ExpirationMinutes is >= 2 and <= 60, "Invalid OTP expiration.").ValidateOnStart();
+        services.AddOptions<EmailConfirmationTokenProviderOptions>().Configure<IOptions<EmailConfirmationTokenOptions>>((x, configured) =>
+        {
+            x.Name = EmailConfirmationTokenProvider.ProviderName;
+            x.TokenLifespan = TimeSpan.FromMinutes(configured.Value.ExpirationMinutes);
+        });
+        services.Configure<DataProtectionTokenProviderOptions>(x => x.TokenLifespan = TimeSpan.FromHours(24));
+        services.AddSingleton<IJwtProvider, JwtProvider>();
+        services.AddScoped<RefreshTokenIssuer>();
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+        services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+            .Configure<IOptions<JwtOptions>, RsaKeyProvider>((x, configured, rsaKeyProvider) =>
+            {
+                x.MapInboundClaims = false;
+                x.IncludeErrorDetails = false;
+                x.TokenValidationParameters = JwtProvider.ValidationParameters(configured.Value, rsaKeyProvider);
+            }).ValidateOnStart();
+        services.AddAuthorization();
+    }
+    private static void AddAuthRateLimiting(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            foreach (var proxy in configuration.GetSection("Proxy:KnownProxies").Get<string[]>() ?? [])
+                options.KnownProxies.Add(IPAddress.Parse(proxy));
+        });
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, cancellationToken) =>
+            {
+                var response = IdentityService.Common.Responses.ApiResponse<object>.Fail("Too many requests.", StatusCodes.Status429TooManyRequests);
+                await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
+            };
+            options.AddPolicy(RateLimitPolicies.Auth, context => RateLimitPartition.GetFixedWindowLimiter(
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0
+                }));
+        });
+    }
+    private static void AddEmailConfiguration(this IServiceCollection services)
+    {
+        services.AddOptions<EmailOptions>().BindConfiguration("Email")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.Host) && x.Port is > 0 and <= 65535
+                && System.Net.Mail.MailAddress.TryCreate(x.From, out _)
+                && (string.IsNullOrWhiteSpace(x.UserName) == string.IsNullOrWhiteSpace(x.Password)),
+                "Invalid email configuration.").ValidateOnStart();
+        services.AddTransient<EmailSender>();
+        services.AddScoped<AuthEmailQueue>();
+        services.AddHostedService<AuthEmailWorker>();
+        services.AddHostedService<RefreshTokenCleanupWorker>();
+        services.AddScoped<EmailVerificationCodeStore>();
+        services.AddScoped<AuthEmailSender>();
     }
 }

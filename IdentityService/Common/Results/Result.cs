@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Common.Results;
+namespace IdentityService.Common.Results;
 
 public static class Result
 {
@@ -7,7 +7,7 @@ public static class Result
     public static Deleted Deleted => default;
     public static Updated Updated => default;
 }
-public sealed class Result<TValue> : IResult<TValue>
+public sealed class Result<TValue> : IResult<TValue>, IFailable<Result<TValue>>
 {
     private readonly TValue? _value;
     private readonly IReadOnlyList<Error> _errors;
@@ -52,6 +52,7 @@ public sealed class Result<TValue> : IResult<TValue>
         return IsSuccess ? onValue(Value) : onError(Errors);
     }
     public static Result<TValue> Success(TValue value) => new(value);
+    public static Result<TValue> FromErrors(IEnumerable<Error> errors) => Failure(errors);
     public static Result<TValue> Failure(Error error) => new(error);
     public static Result<TValue> Failure(IEnumerable<Error> errors) => new(errors);
     public static implicit operator Result<TValue>(TValue value) => new(value);

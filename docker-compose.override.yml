@@ -22,6 +22,13 @@ services:
     environment:
       <<: *service-environment
       ConnectionStrings__DefaultConnection: "Server=sql-server,1433;Database=IdentityDb;User Id=sa;Password=${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True"
+      RsaKeys__PrivateKeyPath: "/run/keys/private.pem"
+      RsaKeys__PublicKeyPath: "/run/keys/public.pem"
+      Email__UserName: "${IDENTITY_EMAIL_USERNAME:-}"
+      Email__Password: "${IDENTITY_EMAIL_PASSWORD:-}"
+      Email__From: "${IDENTITY_EMAIL_FROM:-}"
+    volumes:
+      - "${IDENTITY_RSA_KEYS_PATH}:/run/keys:ro"
     depends_on: *sql-dependency
 
   nutrition-service:

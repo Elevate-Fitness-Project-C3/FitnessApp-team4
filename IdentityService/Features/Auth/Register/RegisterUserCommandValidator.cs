@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Features.Auth.Register;
+namespace IdentityService.Features.Auth.Register;
 
 public sealed class RegisterUserCommandValidator
     : AbstractValidator<RegisterUserCommand>

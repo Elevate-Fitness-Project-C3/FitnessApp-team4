@@ -1,4 +1,3 @@
-﻿using IdentityService.Common.Results;
 
 namespace IdentityService.Features.Users;
 
