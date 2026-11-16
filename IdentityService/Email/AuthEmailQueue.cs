@@ -2,6 +2,7 @@ using IdentityService.Security.Tokens;
 namespace IdentityService.Email;
 public sealed class AuthEmailQueue(AuthDbContext db)
 {
+    // Legacy persisted identifier. Changing it requires a data migration.
     internal const string Provider = "FitnessApp.AuthEmailQueue";
     public async Task EnqueueAsync(string userId, OtpPurpose purpose, CancellationToken cancellationToken)
     {

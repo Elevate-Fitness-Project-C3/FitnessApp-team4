@@ -3,6 +3,11 @@ using IdentityService.Common.Exceptions;
 using IdentityService.Persistence.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
+if (builder.Configuration.GetValue<bool>("DevelopmentSetup:GenerateRsaKeys"))
+{
+    if (!builder.Environment.IsDevelopment()) throw new InvalidOperationException("Automatic RSA generation is restricted to Development.");
+    IdentityService.Security.Keys.DevelopmentRsaSetup.Ensure(builder.Configuration);
+}
 builder.Services.AddOpenApi();
 builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
 {
@@ -11,7 +16,7 @@ builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
         var errors = context.ModelState.Where(x => x.Value?.Errors.Count > 0)
             .ToDictionary(x => $"Validation.{x.Key}", _ => new[] { "Invalid request value." });
         return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
-            IdentityService.Common.Responses.ApiResponse<object>.Fail("Validation failed.", StatusCodes.Status400BadRequest, errors));
+            BuildingBlocks.AspNetCore.Responses.ApiResponse<object>.Fail("Validation failed.", StatusCodes.Status400BadRequest, errors));
     };
 });
 builder.Services.AddDependencies(builder.Configuration, builder.Environment.IsDevelopment());
@@ -24,11 +29,8 @@ var app = builder.Build();
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 // Ensure required identity roles exist before accepting requests.
-await using (var scope = app.Services.CreateAsyncScope())
-{
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    await IdentityRoleSeeder.SeedAsync(roleManager);
-}
+_ = app.Services.GetRequiredService<IdentityService.Security.Keys.RsaKeyProvider>();
+await DatabaseInitializer.InitializeAsync(app);
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -37,7 +39,7 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/openapi/v1.json", "Identity Service API v1");
     });
 }
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 app.UseRouting();
 app.UseRateLimiter();
 app.UseAuthentication();

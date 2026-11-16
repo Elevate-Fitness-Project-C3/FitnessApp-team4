@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Security.Options;
+namespace IdentityService.Security.Options;
 
 
 public sealed class RsaKeyOptions

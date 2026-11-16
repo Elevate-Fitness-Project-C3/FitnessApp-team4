@@ -6,6 +6,7 @@ namespace IdentityService.Security.Tokens;
 
 public sealed class EmailVerificationCodeStore(UserManager<ApplicationUser> users, AuthDbContext db, IDataProtectionProvider protection, IOptions<IdentityService.Security.Options.EmailConfirmationTokenOptions> options, ILogger<EmailVerificationCodeStore> logger)
 {
+    // Legacy persisted identifier. Changing it requires a data migration.
     private const string Provider = "FitnessApp.EmailVerification";
     private const int MaxAttempts = 5;
     private TimeSpan OtpLifetime => TimeSpan.FromMinutes(options.Value.ExpirationMinutes);

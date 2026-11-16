@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using IdentityService.Security.Options;
 
 namespace IdentityService.Security.Keys;

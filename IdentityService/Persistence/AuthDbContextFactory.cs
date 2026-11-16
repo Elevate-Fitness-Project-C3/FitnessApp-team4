@@ -4,11 +4,14 @@ public sealed class AuthDbContextFactory : IDesignTimeDbContextFactory<AuthDbCon
 {
     public AuthDbContext CreateDbContext(string[] args)
     {
-        var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json", optional: true)
-            .AddEnvironmentVariables().AddCommandLine(args).Build();
-        var connection = configuration.GetConnectionString("DefaultConnection");
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            Args = args,
+            ApplicationName = typeof(AuthDbContextFactory).Assembly.GetName().Name
+        });
+        var connection = builder.Configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connection))
-            connection = "Server=invalid.invalid;Database=IdentityDb;Integrated Security=True;Connect Timeout=2";
+            throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection before running EF Core tools.");
         return new AuthDbContext(new DbContextOptionsBuilder<AuthDbContext>().UseSqlServer(connection).Options);
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Identity;
+namespace IdentityService.Identity;
 
 public static class RoleNames
 {

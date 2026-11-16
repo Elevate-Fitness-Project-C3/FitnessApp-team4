@@ -1,5 +1,5 @@
 
-using IdentityService.Common.Responses;
+using BuildingBlocks.AspNetCore.Responses;
 namespace IdentityService.Common.Exceptions;
 
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
