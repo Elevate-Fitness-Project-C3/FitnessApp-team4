@@ -18,6 +18,8 @@ public readonly record struct Error
     public string Description { get; }
     public ErrorKind Type { get; }
     public bool IsValid => !string.IsNullOrWhiteSpace(Code) && !string.IsNullOrWhiteSpace(Description) && Enum.IsDefined(Type);
+    public static Error NotFound(string code, string description) => new(code, description, ErrorKind.NotFound);
+    public static Error Unavailable(string code, string description) => new(code, description, ErrorKind.Unavailable);
     public static Error Failure(string code = nameof(Failure), string description = "General failure.")
         => new(code, description, ErrorKind.Failure);
     public static Error Validation(string code = nameof(Validation), string description = "Validation error.")

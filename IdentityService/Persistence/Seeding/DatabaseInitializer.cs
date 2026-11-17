@@ -15,6 +15,7 @@ internal static class DatabaseInitializer
                 if ((await db.Database.GetPendingMigrationsAsync(app.Lifetime.ApplicationStopping)).Any())
                     throw new InvalidOperationException("Apply IdentityService migrations manually with dotnet ef database update before startup.");
                 await IdentityRoleSeeder.SeedAsync(scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>());
+                await PermissionCatalog.SeedAsync(db, app.Lifetime.ApplicationStopping);
                 return;
             }
             catch (SqlException ex) when (attempt < MaxStartupAttempts && ex.Errors.Cast<SqlError>().Any(e => NotReadyErrors.Contains(e.Number)))

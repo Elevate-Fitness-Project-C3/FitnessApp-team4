@@ -18,7 +18,7 @@ internal sealed class RefreshTokenCommandHandler(IJwtProvider jwt, UserManager<A
 
         var hash = RefreshTokenIssuer.Hash(request.RefreshToken);
         await using var transaction = await userLock.BeginAsync(user, cancellationToken);
-        if (transaction is null || !user.EmailConfirmed || await users.IsLockedOutAsync(user))
+        if (transaction is null || !user.IsActive || !user.EmailConfirmed || await users.IsLockedOutAsync(user))
             return AuthErrors.InvalidRefreshToken;
 
         var now = DateTime.UtcNow;

@@ -11,7 +11,7 @@ public sealed class RefreshTokenIssuer(AuthDbContext db, UserManager<Application
     {
         if (db.Database.CurrentTransaction is null)
             throw new InvalidOperationException("Token issuance must run inside the per-user transaction (UserLockScope).");
-        if (!user.EmailConfirmed || user.LockoutEnd > DateTimeOffset.UtcNow)
+        if (!user.IsActive || !user.EmailConfirmed || user.LockoutEnd > DateTimeOffset.UtcNow)
             return null;
 
         var roles = await users.GetRolesAsync(user);

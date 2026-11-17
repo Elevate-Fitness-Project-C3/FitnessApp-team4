@@ -3,6 +3,7 @@ using IdentityService.Common.Exceptions;
 using IdentityService.Persistence.Seeding;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddFilter("MassTransit", LogLevel.None);
 if (builder.Configuration.GetValue<bool>("DevelopmentSetup:GenerateRsaKeys"))
 {
     if (!builder.Environment.IsDevelopment()) throw new InvalidOperationException("Automatic RSA generation is restricted to Development.");
@@ -32,6 +33,11 @@ app.UseForwardedHeaders();
 app.UseExceptionHandler();
 _ = app.Services.GetRequiredService<IdentityService.Security.Keys.RsaKeyProvider>();
 await DatabaseInitializer.InitializeAsync(app);
+if (builder.Configuration.GetValue<bool>("SecurityBootstrap:Execute"))
+{
+    await IdentityService.Operations.SecurityBootstrap.RunAsync(app.Services, builder.Configuration, app.Lifetime.ApplicationStopping);
+    return;
+}
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -43,15 +49,21 @@ if (app.Environment.IsDevelopment())
 if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 app.UseRouting();
 app.UseRateLimiter();
+app.UseMiddleware<IdentityService.Security.Auditing.SecurityFailureAuditMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapJwks();
 app.MapHealthChecks("/health/outbox", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
+    Predicate = registration => registration.Name == "email-outbox",
     ResultStatusCodes =
     {
         [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable
     }
+});
+app.MapHealthChecks("/health/messaging", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("masstransit")
 });
 app.Run();

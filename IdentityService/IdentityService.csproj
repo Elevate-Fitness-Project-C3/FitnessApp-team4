@@ -7,6 +7,9 @@
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 	</PropertyGroup>
 	<ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.12" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.5.12" />
+    <ProjectReference Include="../Audit.Contracts/Audit.Contracts.csproj" />
 		<PackageReference Include="FluentValidation" Version="12.2.0" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
 		<PackageReference Include="MediatR" Version="12.5.0" />
