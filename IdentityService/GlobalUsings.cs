@@ -1,7 +1,7 @@
 global using FluentValidation;
 global using ValidationFailure = FluentValidation.Results.ValidationFailure;
-global using BuildingBlocks.MediatR.Behaviors;
-global using BuildingBlocks.Core.Results;
+global using IdentityService.Common.Behaviors;
+global using IdentityService.Common.Results;
 global using IdentityService.Identity;
 global using IdentityService.Persistence;
 global using MediatR;

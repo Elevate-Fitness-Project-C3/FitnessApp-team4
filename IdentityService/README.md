@@ -1,44 +1,132 @@
-> Development setup has changed in this candidate. See the root README for the current Docker workflow. The original review notes below are retained for API/security context.
+# IdentityService
 
-# IdentityService — authentication review revision
-.NET 10, SQL Server, ASP.NET Core Identity, MediatR, vertical slices. No custom repository or unit of work.
+Authentication service of the Fitness App: registration, e-mail OTP confirmation, login, refresh-token rotation,
+logout, forgot/reset password. Access tokens are **RS256** JWTs; the public key is published at
+`/.well-known/jwks.json`.
 
-## Configuration and deployment
-No working credentials or signing keys are bundled. Supply these through the deployment secret store, CI/CD or container secret mounts. Developers can use their own environment or .NET user secrets (never shared production credentials). All replicas of one environment require the same RSA key pair and data-protection certificate and database. Use distinct keys per environment. No keys are generated automatically at boot.
+## Run locally (Docker)
 
-| Configuration environment variable | Purpose |
-|---|---|
-| ConnectionStrings__DefaultConnection | SQL Server connection string |
-| RsaKeys__PrivateKeyPath | read-only mounted RSA private PEM, IdentityService only |
-| RsaKeys__PublicKeyPath | RSA public PEM, distribute to resource services |
-| DataProtection__CertificatePath | read-only mounted PFX with private key (required outside Development) |
-| DataProtection__CertificatePassword | PFX password from secret store |
-| Email__UserName / Email__Password / Email__From | SMTP credentials and sender |
-| Email__Host / Email__Port / Email__EnableSsl | SMTP endpoint, default Gmail STARTTLS 587 |
-| Proxy__KnownProxies__0 | actual trusted reverse proxy address, if applicable |
+Development uses `dotnet watch` inside the SDK container. Save a C# file and the service rebuilds and restarts
+automatically; refresh Swagger after the restart. Source is mounted read-only and Linux build outputs use Docker
+volumes, separate from host `bin`/`obj`. Polling supports Docker Desktop on Windows/macOS and Linux.
+Start once with `docker compose up -d --build identity-service`. Changes to Dockerfiles or Compose settings still
+require recreating the container. Production uses the published image and does not watch source files.
 
-Keep all secret mounts outside the repository and image build context. The supplied Dockerfile expects the parent solution directory as build context; put equivalent `.dockerignore` rules in that directory too. The runtime UID must have read access to mounted secrets. Configure TLS at the ingress; never trust arbitrary forwarded headers. Use a distributed ingress limiter in multi-replica production (the built-in IP limiter is per process). OTP cooldown and failed-attempt windows are persisted in SQL Server per user and purpose.
-
-Rotate the old exposed SMTP password immediately and any previously committed symmetric signing key/database credential; clean repository history with your team. Existing plaintext DataProtectionKeys rows are NOT retroactively encrypted by configuring a certificate. For a fresh deployment use a clean key ring; in an existing environment plan key migration/rotation, token invalidation and backup handling before enforcing the certificate. Never delete keys blindly. Keep previous certificates for decryption during rotation; current code loads one certificate, so coordinate rollover separately. RSA key rollover likewise requires a coordinated token transition across consumers.
-
-## API changes
-Registration response replaces `emailSent` with `emailQueued`: it means persisted work, not delivered mail. Existing identity fields and duplicate-email 409 contract are retained. `forgot-password` and `logout` are aliases; existing routes continue working. Invalid access token now has its own error. Validation errors use `Validation.<property>` keys. Commands and request DTOs redact ToString, but never destructure or log request bodies or JWTs. Temporary `test-auth` is removed; use an authorized endpoint in a local test host to finish JWT verification.
-
-## Email delivery semantics
-Registration, role assignment and queued confirmation request commit together. Jobs are stored as dedicated provider rows in existing `UserTokens`, not local files or memory. A background worker claims a row and issues the OTP in one transaction. SMTP runs after commit. **Delivery is best effort**: a crash after claim commit or SMTP rejection may lose that send; the user can request resend after cooldown. This is not a fully guaranteed transactional outbox with retry and leases. OTP lifetime can be shorter on resend because the original attempt window is preserved. Do not log OTPs or enable EF sensitive-data logging.
-
-Refresh token reuse (unexpired revoked token) revokes active refresh sessions for the account, including concurrent duplicate refreshes and replay of a logged-out token. Clients must serialize refresh calls. Already issued access JWTs remain valid until expiry; immediate access-token revocation is not implemented. Active refresh sessions are capped at 10 by default; cleanup deletes rows expired more than seven days ago.
-
-## Verification commands (after supplying configuration)
-From the IdentityService directory, with .NET 10 SDK and matching EF tool installed:
-```sh
-dotnet restore
-dotnet build --no-restore
-dotnet ef migrations has-pending-model-changes
-dotnet ef database update
+```bash
+cp .env.example .env          # fill in the secrets (never commit/zip the real .env)
+docker compose up identity-service
+# Swagger (Development only): http://localhost:5002/swagger
 ```
-No schema change intended. The design-time factory uses environment variables or explicit connection arguments; it does not load user secrets. For migration deployment supply the connection securely and run once before starting replicas, not per replica. Do not run database update until the target is verified.
 
-Test registration and rollback, duplicate email concurrently, correct/incorrect password and unconfirmed account, lockout, missing/tampered/expired/HS256 JWT against a protected test endpoint, OTP resend and five failures across two instances, concurrent code use, password reset revocation, concurrent refresh/reuse, session cap, cleanup, proxy spoofing, certificate restart across replicas, SMTP failures and worker restarts. Build/runtime/integration tests were not run in the editing environment (SDK unavailable).
+`docker-compose.dev.yml` is selected through `COMPOSE_FILE` in `.env`. It is intentionally **not** applied implicitly.
+Visual Studio's Docker tooling expects `docker-compose.override.yml`; use the `COMPOSE_FILE` setting (or `-f` flags) instead.
 
-See [FINAL-CHECKLIST.md](FINAL-CHECKLIST.md) for the final cleanup changes and release gates.
+## Configuration (secrets come from environment / user-secrets, never from committed files)
+
+| Key | Purpose |
+|---|---|
+| `ConnectionStrings:DefaultConnection` | the service's own SQL login (not `sa`) |
+| `Jwt:Audience`, `Jwt:Issuer`, `Jwt:AccessTokenExpirationMinutes`, `Jwt:RefreshTokenExpirationDays`, `Jwt:MaxActiveRefreshTokens` | token settings |
+| `RsaKeys:PrivateKeyPath`, `RsaKeys:PublicKeyPath` | RS256 key pair (PEM files mounted read-only) |
+| `Otp:ExpirationMinutes`, `Otp:MaxAttempts`, `Otp:ResendCooldownSeconds` | OTP policy (**renamed** from `EmailConfirmationToken`) |
+| `Email:*` | SMTP (`Email__Password` must come from a secret store) |
+| `DataProtection:CertificatePath`, `DataProtection:CertificatePassword` | certificate that encrypts the Data Protection key ring (required outside Development) |
+| `Proxy:KnownProxies` | IPs of trusted reverse proxies (needed for correct per-IP rate limiting behind a proxy) |
+| `DevelopmentSetup:GenerateRsaKeys` | Creates development RSA keys; refused outside Development |
+
+## Endpoints (`/api/auth`)
+
+`register`, `login`, `confirm-email`, `resend-confirmation-email`, `forgot-password` (alias: `forget-password`),
+`reset-password`, `refresh`, `logout` (alias: `revoke-refresh-token`). Aliases are deprecated and kept for existing clients.
+
+`GET /.well-known/jwks.json` returns the public signing key (RSA, `kid`, `n`, `e`) for the other services.
+
+## How it works
+
+- **Per-user critical section** (`UserLockScope`): login, confirm-email, reset-password, refresh and the e-mail worker run
+  their state changes inside one transaction holding a per-user row lock, on freshly reloaded data. Password hashing
+  (PBKDF2) happens *before* taking the lock.
+- **OTP** (`EmailVerificationCodeStore`): 6 digits, protected with Data Protection, stored in a dedicated `UserTokens` row.
+  Resend cooldown, failed attempts are carried across re-issues until the attempt window ends, constant-time comparison.
+  An unreadable challenge (e.g. after key rotation) is overwritten instead of blocking the user.
+- **E-mail outbox** (`EmailOutbox` table, `AuthEmailQueue`, `AuthEmailWorker`): messages are written in the same transaction as
+  the business change; the worker leases due rows, issues the OTP under the user lock, sends the e-mail and only then marks
+  the row processed. SMTP failures are retried with back-off (up to 4 attempts, each retry issues a fresh OTP). Delivery is
+  at-least-once. Processed rows are purged after 7 days.
+- **Refresh tokens**: stored hashed, rotated on every use, replay of a revoked token revokes all sessions of the user,
+  at most `Jwt:MaxActiveRefreshTokens` active sessions per user, stale rows are purged by `RefreshTokenCleanupWorker`.
+  Every login creates a `SessionId` that is preserved during rotation. Logout takes the same per-user lock as refresh
+  and revokes every token of that session, including a replacement issued by a concurrent refresh. Repeating logout
+  with a recognized, unexpired token succeeds. Other sessions are unaffected by logout.
+- **Account enumeration**: login verifies the password before reporting "e-mail not confirmed"; forgot-password and
+  resend-confirmation always return the same response. Register still answers `409` for an existing e-mail (product decision).
+
+## Operations notes
+
+- Set `EmailBranding:ApplicationName`, `TeamName`, `ConfirmEmailSubject` and `ResetPasswordSubject` for your product.
+  Templates encode configured text as HTML. Existing `FitnessApp.*` OTP storage/protection identifiers deliberately
+  remain unchanged: they are compatibility identifiers, not branding. Do not rename them without a migration or
+  allowing old challenges to expire; retain the Data Protection application name and key ring.
+- `EmailOutbox` configures the shared delivery attempt limit, lease, renewal interval and processing timeout.
+  Lease renewal uses a separate DbContext. Lost ownership cancels sending, and completion/retry/defer updates require
+  a matching, unexpired lease. Delivery remains at-least-once: SMTP acceptance and a database commit are not atomic,
+  and cancellation cannot retract mail already accepted by the server.
+- Monitor `GET /health/outbox`: 200 means no exhausted messages, 503 means exhausted messages or a health-check failure.
+  The response exposes status only. Configure your uptime monitoring to alert on 503. The worker also logs exhaustion.
+  An operator with database access can run `Operations/ListFailedEmails.sql`, inspect the delivery incident, then set
+  `@MessageId` in `Operations/RetryFailedEmail.sql` and execute it against that service's database. Set `@MaxAttempts`
+  to the configured value if it differs from 4. Recovery resets one exhausted, unleased row atomically and outputs
+  the operator and timestamp; retain the output in your operations log. It never sends mail directly or resets all rows.
+  The worker notices the retry within 30 seconds. User resend/forgot-password already reactivates that user's exhausted
+  row through `AuthEmailQueue`. No unauthenticated administrative endpoint or new message broker is added.
+
+- Database creation and schema updates are manual in every environment. Docker does not create application databases
+  or logins. Set `IDENTITY_CONNECTION_STRING` in `.env` for the container, choosing your database and credentials.
+  For host EF tools configure `ConnectionStrings:DefaultConnection` via user-secrets (host: `localhost,14330`).
+  Run from this service directory:
+
+  ```powershell
+  dotnet ef migrations add YourChange
+  dotnet ef database update
+  ```
+
+  Existing migrations only need `database update`; add a migration when you change the model. The migration login
+  needs permission to create/update its database. Startup checks for pending migrations and seeds the User role,
+  but never calls `Migrate` or `EnsureCreated`.
+
+- Production: use `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d identity-service`.
+  Set `IDENTITY_DP_CERTIFICATE_FILE` to an existing PFX containing the private key and set
+  `IDENTITY_DP_CERTIFICATE_PASSWORD`. The overlay mounts it read-only; ensure the container user can read it.
+  Provision the RSA key volume and apply migrations before startup. Development continues using the dev overlay
+  and does not need a certificate. Keep the certificate and its password outside source control and build context.
+  Retain certificates needed to decrypt existing Data Protection keys when rotating certificates.
+
+- Apply `AddRefreshTokenSession` before running the updated service. Existing tokens receive distinct session IDs;
+  historical rotation chains cannot be reconstructed, so the concurrent logout guarantee applies to rotations
+  performed by the updated service. Stop old instances before applying this migration and deploying the update.
+
+- Apply migrations (production): `dotnet ef database update`. The `AddEmailOutbox` migration was written by hand in the
+  project's compact style: run `dotnet ef migrations has-pending-model-changes` and, if it reports differences, regenerate it.
+  It deletes the old best-effort queue rows (`UserTokens` with provider `FitnessApp.AuthEmailQueue`).
+- Rotating the Data Protection certificate or key ring invalidates pending OTPs (users simply request a new code).
+- Rotate any secret that was ever shared in an archive, chat or repository.
+
+## Known limitations
+
+- Access tokens stay valid until they expire (15 min by default) after a password reset or logout.
+- The outbox is polled every 30 s as a safety net and woken immediately after commit by an in-process signal; with several
+  instances the signal only wakes the instance that handled the request (others pick messages up on the next poll).
+
+## Outbox integration tests
+
+Set `OUTBOX_TEST_CONNECTION` to an isolated SQL Server database named `IdentityOutboxTest_*`, then run from the repository root:
+
+```powershell
+dotnet run --project tests/IdentityService.OutboxIntegration/IdentityService.OutboxIntegration.csproj
+```
+
+This explicit test runner applies migrations only to its test database. SMTP is stubbed; SQL transactions and two
+competing workers are real. It verifies a send longer than the lease, renewal, cancellation after ownership loss,
+protection against stale updates, escaped branding, degraded health and guarded operator retries.
+
+In the operations scripts, set `@MaxAttempts` to your configured `EmailOutbox:MaxDeliveryAttempts` if it differs from 4.

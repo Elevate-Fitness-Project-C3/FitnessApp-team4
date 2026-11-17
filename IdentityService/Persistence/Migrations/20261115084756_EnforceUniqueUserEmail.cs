@@ -4,10 +4,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace IdentityService.Persistence.Migrations
 {
-    /// <inheritdoc />
     public partial class EnforceUniqueUserEmail : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(
@@ -22,7 +20,6 @@ namespace IdentityService.Persistence.Migrations
                 filter: "[NormalizedEmail] IS NOT NULL");
         }
 
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropIndex(

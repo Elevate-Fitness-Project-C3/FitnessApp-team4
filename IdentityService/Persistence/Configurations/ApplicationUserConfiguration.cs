@@ -11,7 +11,7 @@ public class ApplicationUserConfiguration : IEntityTypeConfiguration<Application
         builder.Property(u => u.FirstName).IsRequired().HasMaxLength(100);
         builder.Property(u => u.LastName).IsRequired().HasMaxLength(100);
         builder.HasIndex(u => u.NormalizedEmail)
-               .HasDatabaseName("EmailIndex")
+               .HasDatabaseName(DbIndexes.Email)
                .IsUnique()
                .HasFilter("[NormalizedEmail] IS NOT NULL");
     }

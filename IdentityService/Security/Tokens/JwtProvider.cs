@@ -1,13 +1,22 @@
 using IdentityService.Security.Keys;
 using IdentityService.Security.Options;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
 namespace IdentityService.Security.Tokens;
 
-public sealed class JwtProvider(IOptions<JwtOptions> options, RsaKeyProvider rsaKeyProvider) : IJwtProvider
+public sealed class JwtProvider : IJwtProvider
 {
-    private readonly JwtOptions _options = options.Value;
-    private readonly TokenValidationParameters _refreshValidation = ValidationParameters(options.Value, rsaKeyProvider, false);
+    private readonly JwtOptions _options;
+    private readonly RsaKeyProvider _rsaKeyProvider;
+    private readonly JsonWebTokenHandler _handler = new();
+    private readonly TokenValidationParameters _expiredTokenValidation;
+
+    public JwtProvider(IOptions<JwtOptions> options, RsaKeyProvider rsaKeyProvider)
+    {
+        _options = options.Value;
+        _rsaKeyProvider = rsaKeyProvider;
+        _expiredTokenValidation = ValidationParameters(_options, rsaKeyProvider, validateLifetime: false);
+    }
+
     public static TokenValidationParameters ValidationParameters(JwtOptions options, RsaKeyProvider rsaKeyProvider, bool validateLifetime = true) => new()
     {
         ValidateIssuer = true,
@@ -24,34 +33,38 @@ public sealed class JwtProvider(IOptions<JwtOptions> options, RsaKeyProvider rsa
         RoleClaimType = "role",
         ClockSkew = TimeSpan.FromSeconds(30)
     };
+
     public (string Token, int ExpiresIn) GenerateToken(ApplicationUser user, IEnumerable<string> roles)
     {
         var now = DateTime.UtcNow;
-        var claims = new List<Claim>
+        var claims = new Dictionary<string, object>
         {
-            new(JwtRegisteredClaimNames.Sub, user.Id),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            new(JwtRegisteredClaimNames.Iat, new DateTimeOffset(now).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64)
+            ["sub"] = user.Id,
+            ["jti"] = Guid.NewGuid().ToString()
         };
-        claims.AddRange(roles.Select(role => new Claim("role", role)));
-        var token = new JwtSecurityToken(
-            issuer: _options.Issuer,
-            audience: _options.Audience,
-            claims: claims,
-            notBefore: now,
-            expires: now.AddMinutes(_options.AccessTokenExpirationMinutes),
-            signingCredentials: rsaKeyProvider.SigningCredentials);
-        return (new JwtSecurityTokenHandler().WriteToken(token), checked(_options.AccessTokenExpirationMinutes * 60));
-    }
-    public string? ValidateToken(string token)
-    {
-        try
+        var roleList = roles.ToArray();
+        if (roleList.Length == 1) claims["role"] = roleList[0];
+        else if (roleList.Length > 1) claims["role"] = roleList;
+        var descriptor = new SecurityTokenDescriptor
         {
-            var principal = new JwtSecurityTokenHandler { MapInboundClaims = false }
-                .ValidateToken(token, _refreshValidation.Clone(), out _);
-            return principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-        }
-        catch (SecurityTokenException) { return null; }
-        catch (ArgumentException) { return null; }
+            Issuer = _options.Issuer,
+            Audience = _options.Audience,
+            IssuedAt = now,
+            NotBefore = now,
+            Expires = now.AddMinutes(_options.AccessTokenExpirationMinutes),
+            SigningCredentials = _rsaKeyProvider.SigningCredentials,
+            Claims = claims
+        };
+        return (_handler.CreateToken(descriptor), checked(_options.AccessTokenExpirationMinutes * 60));
+    }
+
+    public async Task<string?> ValidateTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var result = await _handler.ValidateTokenAsync(token, _expiredTokenValidation);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!result.IsValid)
+            return null;
+        return (result.ClaimsIdentity.FindFirst("sub") ?? result.ClaimsIdentity.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier))?.Value;
     }
 }

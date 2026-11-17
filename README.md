@@ -8,7 +8,7 @@ FitnessApp is a .NET 10 microservices solution. IdentityService provides reusabl
 - Internet access for container images and package restore.
 - .NET 10 SDK only for host builds or debugging outside Docker.
 
-No host OpenSSL, EF CLI, or PowerShell setup script is required for Docker development.
+Use the EF CLI to apply each service's migrations manually before starting that service.
 
 ## Environment configuration
 
@@ -16,6 +16,7 @@ Copy `.env.example` to `.env` in the repository root and supply the required val
 
 ```dotenv
 SQL_SA_PASSWORD=
+IDENTITY_CONNECTION_STRING=
 IDENTITY_JWT_AUDIENCE=FitnessApp
 IDENTITY_EMAIL_USERNAME=
 IDENTITY_EMAIL_PASSWORD=
@@ -73,12 +74,26 @@ The standalone environment has separate database and RSA volumes. Both deploymen
 For a host build of IdentityService and its shared libraries:
 
 ```sh
-dotnet build IdentityPlatform.slnx
+dotnet build IdentityService/IdentityService.csproj
 ```
 
 ## Development initialization and persistence
 
-Development startup is configured to generate RSA keys when needed, apply IdentityService EF Core migrations, and seed the User role. Docker Compose creates named volumes and waits for SQL Server health before starting dependent services. Automatic migrations for other services are not guaranteed by these settings.
+Docker starts SQL Server without creating application databases or logins. Each developer chooses their service's
+connection string and applies only that service's EF migrations. IdentityService startup generates development RSA
+keys when needed, checks for pending migrations and seeds the User role; it never creates or migrates the database.
+
+For Identity, configure `ConnectionStrings:DefaultConnection` in user-secrets for host EF tools, then run:
+
+```sh
+cd IdentityService
+dotnet ef migrations add YourChange
+dotnet ef database update
+```
+
+Only add a migration when changing the model; for existing migrations, run `database update` directly. Host tools
+connect to `localhost,14330`; containers use `sql-server,1433`. Supply the container connection through
+`IDENTITY_CONNECTION_STRING` in `.env`. Other services have their own `*_CONNECTION_STRING` variables.
 
 FitnessApp uses `fitness-sql-data-v2` for SQL data and `fitness-identity-rsa-keys` for identity signing keys. Standalone volumes are project-scoped. Never use `down -v` unless intentionally deleting development state. Back up existing data and keys; do not delete an existing volume to resolve a Compose ownership warning.
 

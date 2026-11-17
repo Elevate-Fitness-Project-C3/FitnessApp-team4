@@ -14,21 +14,22 @@ builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
     options.InvalidModelStateResponseFactory = context =>
     {
         var errors = context.ModelState.Where(x => x.Value?.Errors.Count > 0)
-            .ToDictionary(x => $"Validation.{x.Key}", _ => new[] { "Invalid request value." });
+            .ToDictionary(
+                x => $"Validation.{x.Key}",
+                x => x.Value!.Errors
+                    .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Invalid request value." : e.ErrorMessage)
+                    .ToArray());
         return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
-            BuildingBlocks.AspNetCore.Responses.ApiResponse<object>.Fail("Validation failed.", StatusCodes.Status400BadRequest, errors));
+            IdentityService.Common.Responses.ApiResponse<object>.Fail("Validation failed.", StatusCodes.Status400BadRequest, errors));
     };
 });
 builder.Services.AddDependencies(builder.Configuration, builder.Environment.IsDevelopment());
-// Register centralized exception handling.
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
-// Handle exceptions raised during HTTP request processing.
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
-// Ensure required identity roles exist before accepting requests.
 _ = app.Services.GetRequiredService<IdentityService.Security.Keys.RsaKeyProvider>();
 await DatabaseInitializer.InitializeAsync(app);
 if (app.Environment.IsDevelopment())
@@ -45,4 +46,12 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapJwks();
+app.MapHealthChecks("/health/outbox", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResultStatusCodes =
+    {
+        [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable
+    }
+});
 app.Run();

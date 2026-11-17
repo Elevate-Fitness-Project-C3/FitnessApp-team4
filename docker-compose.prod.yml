@@ -1,0 +1,17 @@
+# Explicit production overlay; use with docker-compose.yml, without docker-compose.dev.yml.
+services:
+  identity-service:
+    build:
+      target: final
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      DevelopmentSetup__GenerateRsaKeys: "false"
+      DataProtection__CertificatePath: /run/identity/data-protection.pfx
+      DataProtection__CertificatePassword: "${IDENTITY_DP_CERTIFICATE_PASSWORD:?Set IDENTITY_DP_CERTIFICATE_PASSWORD}"
+    volumes:
+      - type: bind
+        source: "${IDENTITY_DP_CERTIFICATE_FILE:?Set IDENTITY_DP_CERTIFICATE_FILE to an existing PFX file}"
+        target: /run/identity/data-protection.pfx
+        read_only: true
+        bind:
+          create_host_path: false

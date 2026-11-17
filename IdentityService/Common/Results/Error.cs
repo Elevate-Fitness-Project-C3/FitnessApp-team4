@@ -1,0 +1,33 @@
+﻿namespace IdentityService.Common.Results;
+
+public readonly record struct Error
+{
+    private Error(string code, string description, ErrorKind type)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        if (!Enum.IsDefined(type))
+        {
+            throw new ArgumentOutOfRangeException(nameof(type));
+        }
+        Code = code;
+        Description = description;
+        Type = type;
+    }
+    public string Code { get; }
+    public string Description { get; }
+    public ErrorKind Type { get; }
+    public bool IsValid => !string.IsNullOrWhiteSpace(Code) && !string.IsNullOrWhiteSpace(Description) && Enum.IsDefined(Type);
+    public static Error Failure(string code = nameof(Failure), string description = "General failure.")
+        => new(code, description, ErrorKind.Failure);
+    public static Error Validation(string code = nameof(Validation), string description = "Validation error.")
+        => new(code, description, ErrorKind.Validation);
+    public static Error Conflict(string code = nameof(Conflict), string description = "Conflict error.")
+        => new(code, description, ErrorKind.Conflict);
+    public static Error Unauthorized(string code = nameof(Unauthorized), string description = "Authentication is required.")
+        => new(code, description, ErrorKind.Unauthorized);
+    public static Error Forbidden(string code = nameof(Forbidden), string description = "You are not authorized to perform this action.")
+        => new(code, description, ErrorKind.Forbidden);
+    public static Error AlreadyExists(string code = nameof(AlreadyExists), string description = "Resource already exists.")
+        => new(code, description, ErrorKind.AlreadyExists);
+}
