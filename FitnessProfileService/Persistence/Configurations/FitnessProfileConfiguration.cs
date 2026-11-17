@@ -20,6 +20,28 @@ namespace FitnessProfileService.Persistence.Configurations
             builder.HasIndex(fp => fp.UserId)
                 .IsUnique();
 
+
+            builder.HasQueryFilter(fp => !fp.IsDeleted);
+
+            builder.Property(fp => fp.Gender)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+
+            builder.Property(fp => fp.FitnessGoal)
+                .HasConversion<string>()
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Property(fp => fp.PhysicalActivityLevel)
+                .HasConversion<string>()
+                .HasMaxLength(100)
+                .IsRequired();
+
+            builder.Property(fp => fp.TrainingExperienceLevel)
+                .HasConversion<string>()
+                .HasMaxLength(100);
         }
     }
 }

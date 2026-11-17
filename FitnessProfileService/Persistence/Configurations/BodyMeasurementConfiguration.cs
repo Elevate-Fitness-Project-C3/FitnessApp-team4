@@ -28,7 +28,10 @@ namespace FitnessProfileService.Persistence.Configurations
 
             builder.HasOne(bm => bm.FitnessProfile)
                    .WithMany(fp => fp.BodyMeasurements)
-                   .HasForeignKey(bm => bm.FitnessProfileId);
+                   .HasForeignKey(bm => bm.FitnessProfileId)
+                   .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasQueryFilter(bm => !bm.IsDeleted && !bm.FitnessProfile.IsDeleted);
 
         }
     }
