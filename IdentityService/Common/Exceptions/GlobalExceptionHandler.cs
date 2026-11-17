@@ -1,5 +1,4 @@
-
-using BuildingBlocks.AspNetCore.Responses;
+using IdentityService.Common.Responses;
 namespace IdentityService.Common.Exceptions;
 
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
@@ -24,7 +23,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             await httpContext.Response.WriteAsJsonAsync(validationResponse, cancellationToken);
             return true;
         }
-        logger.LogError("Unhandled exception occurred. TraceId={TraceId} ErrorType={ErrorType}", httpContext.TraceIdentifier, exception.GetType().Name);
+        logger.LogError(exception, "Unhandled exception occurred. TraceId={TraceId}", httpContext.TraceIdentifier);
         var response = ApiResponse<object>.Fail(message: "An unexpected error occurred.", statusCode:
                                         StatusCodes.Status500InternalServerError);
         httpContext.Response.StatusCode = response.StatusCode;

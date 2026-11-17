@@ -15,7 +15,6 @@ namespace IdentityService.Persistence.Migrations
     [Migration("20261115084756_EnforceUniqueUserEmail")]
     partial class EnforceUniqueUserEmail
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

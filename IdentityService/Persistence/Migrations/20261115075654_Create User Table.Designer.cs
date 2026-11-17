@@ -15,7 +15,6 @@ namespace IdentityService.Persistence.Migrations
     [Migration("20261115075654_Create User Table")]
     partial class CreateUserTable
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

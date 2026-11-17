@@ -1,20 +1,23 @@
 name: identity-platform
 services:
   identity-service:
+    image: fitness-identity:development
     build:
       context: .
       dockerfile: IdentityService/Dockerfile
+      target: development
     ports:
       - "127.0.0.1:5002:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__DefaultConnection: "Server=sql-server,1433;Database=IdentityDb;User Id=sa;Password=${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True;Connect Timeout=5"
+      ConnectionStrings__DefaultConnection: "${IDENTITY_CONNECTION_STRING:-}"
       Jwt__Audience: "${IDENTITY_JWT_AUDIENCE:?Set IDENTITY_JWT_AUDIENCE in .env}"
       RsaKeys__PrivateKeyPath: /var/lib/identity/keys/private.pem
       RsaKeys__PublicKeyPath: /var/lib/identity/keys/public.pem
       DevelopmentSetup__GenerateRsaKeys: "true"
-      DevelopmentSetup__ApplyMigrations: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER: "1"
       Email__Host: "${IDENTITY_EMAIL_HOST:-smtp.gmail.com}"
       Email__Port: "${IDENTITY_EMAIL_PORT:-587}"
       Email__EnableSsl: "${IDENTITY_EMAIL_ENABLE_SSL:-true}"
@@ -23,6 +26,9 @@ services:
       Email__From: "${IDENTITY_EMAIL_FROM:?Set IDENTITY_EMAIL_FROM in .env}"
     volumes:
       - identity-rsa-keys:/var/lib/identity/keys
+      - ./IdentityService:/src/IdentityService:ro
+      - identity-dev-bin:/src/IdentityService/bin
+      - identity-dev-obj:/src/IdentityService/obj
     depends_on:
       sql-server:
         condition: service_healthy
@@ -47,5 +53,7 @@ services:
       retries: 30
       start_period: 20s
 volumes:
+  identity-dev-bin:
+  identity-dev-obj:
   identity-sql-data:
   identity-rsa-keys:

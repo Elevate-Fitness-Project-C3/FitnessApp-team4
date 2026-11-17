@@ -15,7 +15,6 @@ namespace IdentityService.Persistence.Migrations
     [Migration("20261114102232_InitialIdentitySchema")]
     partial class InitialIdentitySchema
     {
-        /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618

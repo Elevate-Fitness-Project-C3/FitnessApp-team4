@@ -1,49 +1,19 @@
-
-# Version control
+# Build context is the repository root (docker-compose.yml: context: .). Keep secrets and junk out of it.
 **/.git
-**/.gitignore
-**/.gitattributes
-
-# Build outputs
+**/.vs
+**/.vscode
+**/.idea
 **/bin
 **/obj
-**/artifacts
-**/publish
-
-# IDE and user-specific files
-**/.vs
-**/.idea
 **/*.user
-**/*.suo
-**/*.userosscache
-**/*.sln.docstates
-**/*.DotSettings.user
-
-# Environment variables
 **/.env
 **/.env.*
-
-# Secrets and cryptographic keys
+!**/.env.example
 **/*.pem
-**/*.key
 **/*.pfx
+**/*.key
 **/*.p12
-**/.secrets
-**/secrets
-
-# Local application configuration
-**/appsettings.Local.json
-
-# Test results and code coverage
-**/TestResults
-**/coverage
-**/*.coverage
-**/*.coveragexml
-
-# Logs and temporary files
-**/*.log
-**/*.tmp
-
-# Operating system files
-**/.DS_Store
-**/Thumbs.db
+**/secrets.json
+.secrets
+secrets
+sql-init

@@ -15,9 +15,9 @@ public sealed record RegisterUserRequest(string FirstName, string LastName, stri
 {
     public override string ToString() => nameof(RegisterUserRequest);
 }
-public sealed record ForgetPasswordRequest(string Email)
+public sealed record ForgotPasswordRequest(string Email)
 {
-    public override string ToString() => nameof(ForgetPasswordRequest);
+    public override string ToString() => nameof(ForgotPasswordRequest);
 }
 public sealed record RefreshTokenRequest(string Token, string RefreshToken)
 {

@@ -1,0 +1,51 @@
+# LOCAL DEVELOPMENT ONLY. Never used implicitly: opt in with
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# or set COMPOSE_FILE in your local .env (see .env.example).
+#
+# Only the identity stack:  docker compose up identity-service   (starts sql-server as a dependency)
+
+x-dev-environment: &dev-environment
+  ASPNETCORE_ENVIRONMENT: Development
+
+services:
+  fitness-profile-service:
+    ports: ["127.0.0.1:5001:8080"]      # bound to loopback: not reachable from the LAN
+    environment: *dev-environment
+
+  identity-service:
+    image: fitness-identity:development
+    build:
+      target: development
+    volumes:
+      - ./IdentityService:/src/IdentityService:ro
+      - identity-dev-bin:/src/IdentityService/bin
+      - identity-dev-obj:/src/IdentityService/obj
+    ports: ["127.0.0.1:5002:8080"]
+    environment:
+      <<: *dev-environment
+      DevelopmentSetup__GenerateRsaKeys: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER: "1"
+
+  nutrition-service:
+    ports: ["127.0.0.1:5003:8080"]
+    environment: *dev-environment
+
+  payment-service:
+    ports: ["127.0.0.1:5004:8080"]
+    environment: *dev-environment
+
+  progress-service:
+    ports: ["127.0.0.1:5005:8080"]
+    environment: *dev-environment
+
+  training-service:
+    ports: ["127.0.0.1:5006:8080"]
+    environment: *dev-environment
+
+  sql-server:
+    ports: ["127.0.0.1:14330:1433"]
+
+volumes:
+  identity-dev-bin:
+  identity-dev-obj:
