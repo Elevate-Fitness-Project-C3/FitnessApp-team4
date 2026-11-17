@@ -7,12 +7,12 @@ public sealed class AuthEmailWorker(
     IServiceScopeFactory scopes,
     AuthEmailSignal signal,
     IOptions<OtpOptions> otp,
+    IOptions<EmailOutboxOptions> outbox,
     ILogger<AuthEmailWorker> logger) : BackgroundService
 {
     private const int BatchSize = 20;
-    private const int MaxDeliveryAttempts = 4;
+    private int MaxDeliveryAttempts => outbox.Value.MaxDeliveryAttempts;
     private static readonly TimeSpan IdlePoll = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan Lease = TimeSpan.FromMinutes(2);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -61,7 +61,7 @@ public sealed class AuthEmailWorker(
             if (messageId is null) break;
 
             var leaseToken = Guid.NewGuid();
-            var leaseUntil = DateTime.UtcNow.Add(Lease);
+            var leaseUntil = DateTime.UtcNow.AddSeconds(outbox.Value.LeaseSeconds);
 
             var claimed = await db.EmailOutbox
                 .Where(x => x.Id == messageId.Value && x.ProcessedOn == null && x.Attempts < MaxDeliveryAttempts &&
@@ -75,7 +75,16 @@ public sealed class AuthEmailWorker(
             var message = await db.EmailOutbox.AsNoTracking()
                 .FirstAsync(x => x.Id == messageId.Value && x.LockToken == leaseToken, cancellationToken);
 
-            await ProcessMessageAsync(scope.ServiceProvider, db, message, leaseToken, cancellationToken);
+            await using var lease = new EmailOutboxLease(scopes, outbox.Value, logger, message.Id, leaseToken, cancellationToken);
+            try
+            {
+                await ProcessMessageAsync(scope.ServiceProvider, db, message, leaseToken, lease, lease.Token);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning("Outbox processing canceled after timeout or lease loss. MessageId={MessageId}", message.Id);
+                await RetryLaterAsync(db, message, leaseToken, cancellationToken);
+            }
             handled++;
         }
 
@@ -83,7 +92,7 @@ public sealed class AuthEmailWorker(
     }
 
     private async Task ProcessMessageAsync(IServiceProvider services, AuthDbContext db, EmailOutboxMessage message,
-        Guid leaseToken, CancellationToken cancellationToken)
+        Guid leaseToken, EmailOutboxLease lease, CancellationToken cancellationToken)
     {
         var users = services.GetRequiredService<UserManager<ApplicationUser>>();
         var codes = services.GetRequiredService<EmailVerificationCodeStore>();
@@ -107,6 +116,7 @@ public sealed class AuthEmailWorker(
                 return;
             }
 
+            await lease.EnsureOwnedAsync();
             eligible = IsEligible(user, message.Purpose);
             if (eligible) issue = await codes.IssueAsync(user, message.Purpose, cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -130,6 +140,7 @@ public sealed class AuthEmailWorker(
             return;
         }
 
+        await lease.EnsureOwnedAsync();
         if (await sender.SendAsync(user, message.Purpose, issue.Code!, cancellationToken))
             await CompleteAsync(db, message.Id, leaseToken, cancellationToken);
         else
@@ -142,7 +153,7 @@ public sealed class AuthEmailWorker(
     private static Task CompleteAsync(AuthDbContext db, long id, Guid leaseToken, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
-        return db.EmailOutbox.Where(x => x.Id == id && x.LockToken == leaseToken)
+        return db.EmailOutbox.Where(x => x.Id == id && x.LockToken == leaseToken && x.LockedUntil > DateTime.UtcNow && x.ProcessedOn == null)
             .ExecuteUpdateAsync(
                 s => s.SetProperty(x => x.ProcessedOn, (DateTime?)now)
                     .SetProperty(x => x.LockedUntil, (DateTime?)null)
@@ -153,7 +164,7 @@ public sealed class AuthEmailWorker(
         CancellationToken cancellationToken)
     {
         var nextAttempt = retryAt.UtcDateTime;
-        return db.EmailOutbox.Where(x => x.Id == id && x.LockToken == leaseToken)
+        return db.EmailOutbox.Where(x => x.Id == id && x.LockToken == leaseToken && x.LockedUntil > DateTime.UtcNow && x.ProcessedOn == null)
             .ExecuteUpdateAsync(
                 s => s.SetProperty(x => x.NextAttemptOn, nextAttempt)
                     .SetProperty(x => x.LockedUntil, (DateTime?)null)
@@ -164,18 +175,15 @@ public sealed class AuthEmailWorker(
         CancellationToken cancellationToken)
     {
         var attempts = message.Attempts + 1;
-        if (attempts >= MaxDeliveryAttempts)
-            logger.LogError(
-                "Authentication e-mail permanently failed after {Attempts} attempts. MessageId={MessageId} UserId={UserId}",
-                attempts, message.Id, message.UserId);
-
         // The delay must exceed the resend cooldown, otherwise the retry could not issue a fresh OTP.
         var nextAttempt = DateTime.UtcNow + TimeSpan.FromSeconds(otp.Value.ResendCooldownSeconds + 30) * attempts;
-        await db.EmailOutbox.Where(x => x.Id == message.Id && x.LockToken == leaseToken)
+        var changed = await db.EmailOutbox.Where(x => x.Id == message.Id && x.LockToken == leaseToken && x.LockedUntil > DateTime.UtcNow && x.ProcessedOn == null)
             .ExecuteUpdateAsync(
                 s => s.SetProperty(x => x.Attempts, attempts)
                     .SetProperty(x => x.NextAttemptOn, nextAttempt)
                     .SetProperty(x => x.LockedUntil, (DateTime?)null)
                     .SetProperty(x => x.LockToken, (Guid?)null), cancellationToken);
+        if (changed == 1 && attempts >= MaxDeliveryAttempts)
+            logger.LogError("Authentication e-mail exhausted delivery attempts. MessageId={MessageId} Attempts={Attempts}", message.Id, attempts);
     }
 }

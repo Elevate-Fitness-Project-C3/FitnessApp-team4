@@ -3,21 +3,22 @@ using IdentityService.Security.Options;
 using IdentityService.Security.Tokens;
 namespace IdentityService.Email;
 
-public sealed class AuthEmailSender(IEmailSender sender, IOptions<OtpOptions> options, ILogger<AuthEmailSender> logger)
+public sealed class AuthEmailSender(IEmailSender sender, IOptions<OtpOptions> options,
+    IOptions<EmailBrandingOptions> branding, ILogger<AuthEmailSender> logger)
 {
     public async Task<bool> SendAsync(ApplicationUser user, OtpPurpose purpose, string code, CancellationToken cancellationToken)
     {
         var (template, subject) = purpose switch
         {
-            OtpPurpose.ConfirmEmail => ("EmailConfirmation", "Fitness App: Confirm email"),
-            OtpPurpose.ResetPassword => ("ForgotPassword", "Fitness App: Reset password"),
+            OtpPurpose.ConfirmEmail => ("EmailConfirmation", branding.Value.ConfirmEmailSubject),
+            OtpPurpose.ResetPassword => ("ForgotPassword", branding.Value.ResetPasswordSubject),
             _ => throw new ArgumentOutOfRangeException(nameof(purpose))
         };
 
         try
         {
-            var body = EmailBodyBuilder.GenerateEmailBody(template, user.FirstName, code, options.Value.ExpirationMinutes);
-            await sender.SendEmailAsync(user.Email!, subject, body, cancellationToken);
+            var body = EmailBodyBuilder.GenerateEmailBody(template, user.FirstName, code, options.Value.ExpirationMinutes, branding.Value);
+            await sender.SendEmailAsync(user.Email!, $"{branding.Value.ApplicationName}: {subject}", body, cancellationToken);
             return true;
         }
         catch (SmtpException ex)

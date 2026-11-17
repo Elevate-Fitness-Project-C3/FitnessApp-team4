@@ -29,6 +29,10 @@ services:
       Email__UserName: "${IDENTITY_EMAIL_USERNAME:?Set IDENTITY_EMAIL_USERNAME in .env}"
       Email__Password: "${IDENTITY_EMAIL_PASSWORD:?Set IDENTITY_EMAIL_PASSWORD in .env}"
       Email__From: "${IDENTITY_EMAIL_FROM:?Set IDENTITY_EMAIL_FROM in .env}"
+      EmailBranding__ApplicationName: "${IDENTITY_APPLICATION_NAME:-Identity Service}"
+      EmailBranding__TeamName: "${IDENTITY_TEAM_NAME:-Support Team}"
+      EmailBranding__ConfirmEmailSubject: "${IDENTITY_CONFIRM_EMAIL_SUBJECT:-Confirm email}"
+      EmailBranding__ResetPasswordSubject: "${IDENTITY_RESET_PASSWORD_SUBJECT:-Reset password}"
     volumes:
       - identity-rsa-keys:/var/lib/identity/keys
     depends_on:

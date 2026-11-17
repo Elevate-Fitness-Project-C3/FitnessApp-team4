@@ -118,6 +118,18 @@ public static class DependencyInjection
     }
     private static void AddEmailConfiguration(this IServiceCollection services)
     {
+        services.AddOptions<EmailBrandingOptions>().BindConfiguration("EmailBranding")
+            .Validate(x => !string.IsNullOrWhiteSpace(x.ApplicationName) && !string.IsNullOrWhiteSpace(x.TeamName)
+                && !string.IsNullOrWhiteSpace(x.ConfirmEmailSubject) && !string.IsNullOrWhiteSpace(x.ResetPasswordSubject)
+                && !($"{x.ApplicationName}{x.ConfirmEmailSubject}{x.ResetPasswordSubject}".Contains('\r'))
+                && !($"{x.ApplicationName}{x.ConfirmEmailSubject}{x.ResetPasswordSubject}".Contains('\n')),
+                "Invalid email branding.").ValidateOnStart();
+        services.AddOptions<EmailOutboxOptions>().BindConfiguration("EmailOutbox")
+            .Validate(x => x.MaxDeliveryAttempts is >= 1 and <= 20 && x.LeaseSeconds is >= 2 and <= 600
+                && x.RenewalSeconds >= 1 && x.RenewalSeconds <= x.LeaseSeconds / 2
+                && x.ProcessingTimeoutSeconds >= x.LeaseSeconds && x.ProcessingTimeoutSeconds <= 3600,
+                "Invalid outbox configuration.").ValidateOnStart();
+        services.AddHealthChecks().AddCheck<EmailOutboxHealthCheck>("email-outbox");
         services.AddOptions<EmailOptions>().BindConfiguration("Email")
             .Validate(x => !string.IsNullOrWhiteSpace(x.Host) && x.Port is > 0 and <= 65535
                 && System.Net.Mail.MailAddress.TryCreate(x.From, out _)

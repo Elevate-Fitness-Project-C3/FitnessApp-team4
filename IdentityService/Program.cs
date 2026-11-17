@@ -47,4 +47,11 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapJwks();
+app.MapHealthChecks("/health/outbox", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResultStatusCodes =
+    {
+        [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable
+    }
+});
 app.Run();

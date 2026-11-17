@@ -2,11 +2,11 @@ using IdentityService.Security.Tokens;
 
 namespace IdentityService.Email;
 
-public sealed class AuthEmailQueue(AuthDbContext db)
+public sealed class AuthEmailQueue(AuthDbContext db, IOptions<EmailOutboxOptions> options)
 {
     public async Task EnqueueAsync(string userId, OtpPurpose purpose, CancellationToken cancellationToken)
     {
-        const int maxDeliveryAttempts = 4;
+        var maxDeliveryAttempts = options.Value.MaxDeliveryAttempts;
         var now = DateTime.UtcNow;
 
         var reactivated = await db.EmailOutbox

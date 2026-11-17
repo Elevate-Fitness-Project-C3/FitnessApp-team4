@@ -63,6 +63,23 @@ Visual Studio's Docker tooling expects `docker-compose.override.yml`; use the `C
 
 ## Operations notes
 
+- Set `EmailBranding:ApplicationName`, `TeamName`, `ConfirmEmailSubject` and `ResetPasswordSubject` for your product.
+  Templates encode configured text as HTML. Existing `FitnessApp.*` OTP storage/protection identifiers deliberately
+  remain unchanged: they are compatibility identifiers, not branding. Do not rename them without a migration or
+  allowing old challenges to expire; retain the Data Protection application name and key ring.
+- `EmailOutbox` configures the shared delivery attempt limit, lease, renewal interval and processing timeout.
+  Lease renewal uses a separate DbContext. Lost ownership cancels sending, and completion/retry/defer updates require
+  a matching, unexpired lease. Delivery remains at-least-once: SMTP acceptance and a database commit are not atomic,
+  and cancellation cannot retract mail already accepted by the server.
+- Monitor `GET /health/outbox`: 200 means no exhausted messages, 503 means exhausted messages or a health-check failure.
+  The response exposes status only. Configure your uptime monitoring to alert on 503. The worker also logs exhaustion.
+  An operator with database access can run `Operations/ListFailedEmails.sql`, inspect the delivery incident, then set
+  `@MessageId` in `Operations/RetryFailedEmail.sql` and execute it against that service's database. Set `@MaxAttempts`
+  to the configured value if it differs from 4. Recovery resets one exhausted, unleased row atomically and outputs
+  the operator and timestamp; retain the output in your operations log. It never sends mail directly or resets all rows.
+  The worker notices the retry within 30 seconds. User resend/forgot-password already reactivates that user's exhausted
+  row through `AuthEmailQueue`. No unauthenticated administrative endpoint or new message broker is added.
+
 - Database creation and schema updates are manual in every environment. Docker does not create application databases
   or logins. Set `IDENTITY_CONNECTION_STRING` in `.env` for the container, choosing your database and credentials.
   For host EF tools configure `ConnectionStrings:DefaultConnection` via user-secrets (host: `localhost,14330`).
@@ -100,26 +117,16 @@ Visual Studio's Docker tooling expects `docker-compose.override.yml`; use the `C
 - The outbox is polled every 30 s as a safety net and woken immediately after commit by an in-process signal; with several
   instances the signal only wakes the instance that handled the request (others pick messages up on the next poll).
 
-## Session concurrency integration tests
+## Outbox integration tests
 
-Results, response mapping and validation behavior are compiled from source under `Common/Results`, `Common/Responses`
-and `Common/Behaviors`; the service no longer references the legacy `BuildingBlocks` DLLs.
-
-Set `IDENTITY_SESSION_TEST_CONNECTION` to a dedicated SQL Server test database, then run:
+Set `OUTBOX_TEST_CONNECTION` to an isolated SQL Server database named `IdentityOutboxTest_*`, then run from the repository root:
 
 ```powershell
-dotnet run --project tests/IdentityService.SessionIntegration/IdentityService.SessionIntegration.csproj
+dotnet run --project tests/IdentityService.OutboxIntegration/IdentityService.OutboxIntegration.csproj
 ```
 
-The runner applies migrations and creates test accounts. It checks rotation followed by logout with the old token,
-logout followed by refresh, repeated logout, unrelated session isolation, unknown tokens and ten concurrent races.
-JWT validation is stubbed; transactions, row locks, handlers and persistence use the real SQL Server provider.
-It also verifies that the first login upgrades an Identity V2 password hash successfully. The checks for SMTP timeout
-versus shutdown cancellation, compatibility routes, response mapping and validation can run without a database:
+This explicit test runner applies migrations only to its test database. SMTP is stubbed; SQL transactions and two
+competing workers are real. It verifies a send longer than the lease, renewal, cancellation after ownership loss,
+protection against stale updates, escaped branding, degraded health and guarded operator retries.
 
-```powershell
-dotnet run --project tests/IdentityService.SessionIntegration/IdentityService.SessionIntegration.csproj -- --unit-only
-```
-
-JWT checks cover asynchronous validation, malformed tokens, audience rejection, expired access tokens for refresh/logout,
-and cancellation. The SQL tests also inject a lock failure and verify transaction cleanup on the same DbContext.
+In the operations scripts, set `@MaxAttempts` to your configured `EmailOutbox:MaxDeliveryAttempts` if it differs from 4.
