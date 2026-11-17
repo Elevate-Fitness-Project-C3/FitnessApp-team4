@@ -1,0 +1,17 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Cryptographic keys and certificates
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Local secrets
+.secrets/
+secrets/
+
+# JetBrains IDE
+.idea/

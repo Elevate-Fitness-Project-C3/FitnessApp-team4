@@ -58,7 +58,6 @@ services:
 
 volumes:
   fitness-sql-data:
-    external: true
     name: fitness-sql-data-v2
 
 networks:
