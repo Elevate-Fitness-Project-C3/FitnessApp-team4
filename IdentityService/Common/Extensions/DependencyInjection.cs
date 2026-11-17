@@ -15,11 +15,20 @@ public static class DependencyInjection
     public static IServiceCollection AddDependencies(this IServiceCollection services, IConfiguration configuration, bool isDevelopment = false)
     {
         services.AddApplication();
+        services.AddHttpContextAccessor();
+        services.AddScoped<IdentityService.Security.Auditing.AuditActorContext>();
+        services.AddScoped<IdentityService.Security.Auditing.SecurityAuditWriter>();
+        services.AddScoped<IdentityService.Features.Roles.SecurityMutationChecks>();
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, IdentityService.Security.Authorization.ApiAuthorizationResultHandler>();
+        services.AddScoped<IdentityService.Security.Authorization.EffectivePermissionResolver>();
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, IdentityService.Security.Authorization.PermissionPolicyProvider>();
+        services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, IdentityService.Security.Authorization.PermissionAuthorizationHandler>();
         services.AddPersistence(configuration, isDevelopment);
         services.AddIdentityConfiguration();
         services.AddJwtConfiguration();
         services.AddAuthRateLimiting(configuration);
         services.AddEmailConfiguration();
+        IdentityService.Messaging.AuditMessagingConfiguration.AddAuditMessaging(services, configuration, isDevelopment);
         return services;
     }
     private static void AddApplication(this IServiceCollection services)
@@ -88,6 +97,13 @@ public static class DependencyInjection
                 x.MapInboundClaims = false;
                 x.IncludeErrorDetails = false;
                 x.TokenValidationParameters = JwtProvider.ValidationParameters(configured.Value, rsaKeyProvider);
+                x.Events.OnTokenValidated = async context =>
+                {
+                    var id = context.Principal?.FindFirst("sub")?.Value;
+                    var db = context.HttpContext.RequestServices.GetRequiredService<AuthDbContext>();
+                    if (id is null || !await db.Users.AsNoTracking().AnyAsync(u => u.Id == id && u.IsActive, context.HttpContext.RequestAborted))
+                        context.Fail("The account is not active.");
+                };
             }).ValidateOnStart();
         services.AddAuthorization();
     }

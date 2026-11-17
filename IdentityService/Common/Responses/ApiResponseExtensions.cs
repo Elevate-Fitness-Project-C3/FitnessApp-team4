@@ -18,6 +18,8 @@ public static class ApiResponseExtensions
     private static int MapErrorKindToStatusCode(ErrorKind errorKind) => errorKind switch
     {
         ErrorKind.Validation => StatusCodes.Status400BadRequest,
+        ErrorKind.NotFound => StatusCodes.Status404NotFound,
+        ErrorKind.Unavailable => StatusCodes.Status503ServiceUnavailable,
         ErrorKind.Unauthorized => StatusCodes.Status401Unauthorized,
         ErrorKind.Forbidden => StatusCodes.Status403Forbidden,
         ErrorKind.Conflict => StatusCodes.Status409Conflict,

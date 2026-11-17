@@ -39,6 +39,7 @@ internal sealed class LoginCommandHandler(UserManager<ApplicationUser> users, IP
         }
         if (await users.IsLockedOutAsync(user))
             return AuthErrors.InvalidCredentials;
+        if (!user.IsActive) return AuthErrors.InvalidCredentials;
 
         if (!passwordIsValid)
         {

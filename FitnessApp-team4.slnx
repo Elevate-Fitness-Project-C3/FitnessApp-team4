@@ -1,4 +1,6 @@
 <Solution>
+  <Project Path="Audit.Contracts/Audit.Contracts.csproj" />
+  <Project Path="AuditService/AuditService.csproj" />
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>
