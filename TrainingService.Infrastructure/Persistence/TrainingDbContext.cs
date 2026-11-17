@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using TrainingService.Domain.Exercises;
 using TrainingService.Domain.Workouts;
+using TrainingService.Domain.Programs;
 
 namespace TrainingService.Infrastructure.Persistence;
 
@@ -16,6 +17,8 @@ public class TrainingDbContext : DbContext
     public DbSet<Workout> Workouts => Set<Workout>();
 
     public DbSet<WorkoutExercise> WorkoutExercises => Set<WorkoutExercise>();
+    public DbSet<Program>  Programs { get; set; }
+    public DbSet<ProgramWorkout>  ProgramWorkouts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
