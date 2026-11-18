@@ -26,7 +26,10 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         if (exception is Microsoft.Data.SqlClient.SqlException or DbUpdateException)
         {
             var conflict = exception is DbUpdateConcurrencyException;
-            logger.LogWarning("Persistence operation failed. TraceId={TraceId}", httpContext.TraceIdentifier);
+            var sql = exception as Microsoft.Data.SqlClient.SqlException ?? exception.InnerException as Microsoft.Data.SqlClient.SqlException;
+            logger.LogWarning("Persistence operation failed. TraceId={TraceId} ExceptionType={ExceptionType} SqlError={SqlError}",
+                System.Diagnostics.Activity.Current?.TraceId.ToString() ?? httpContext.TraceIdentifier,
+                exception.GetType().Name, sql?.Number);
             httpContext.Response.StatusCode = conflict ? 409 : 503;
             await httpContext.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(conflict ? "The resource changed. Reload before retrying." : "The database operation is temporarily unavailable.", httpContext.Response.StatusCode), cancellationToken);
             return true;

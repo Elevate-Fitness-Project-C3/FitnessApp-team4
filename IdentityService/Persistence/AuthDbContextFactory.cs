@@ -9,9 +9,7 @@ public sealed class AuthDbContextFactory : IDesignTimeDbContextFactory<AuthDbCon
             Args = args,
             ApplicationName = typeof(AuthDbContextFactory).Assembly.GetName().Name
         });
-        var connection = builder.Configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connection))
-            throw new InvalidOperationException("Configure ConnectionStrings:DefaultConnection before running EF Core tools.");
+        var connection = IdentityDatabaseConfiguration.GetConnectionString(builder.Configuration);
         return new AuthDbContext(new DbContextOptionsBuilder<AuthDbContext>().UseSqlServer(connection).Options);
     }
 }

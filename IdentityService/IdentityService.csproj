@@ -9,15 +9,12 @@
 	<ItemGroup>
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.12" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.5.12" />
-    <ProjectReference Include="../Audit.Contracts/Audit.Contracts.csproj" />
-		<PackageReference Include="FluentValidation" Version="12.2.0" />
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
 		<PackageReference Include="MediatR" Version="12.5.0" />
 		<PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.15" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.15">
 			<PrivateAssets>all</PrivateAssets>

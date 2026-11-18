@@ -15,11 +15,11 @@ services:
 
   identity-service:
     build:
-      context: .
-      dockerfile: IdentityService/Dockerfile
+      context: ./IdentityService
+      dockerfile: Dockerfile
     environment:
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__DefaultConnection: "${IDENTITY_CONNECTION_STRING:-}"
+      Database__Password: "${IDENTITY_SQL_PASSWORD:-}"
       Jwt__Audience: "${IDENTITY_JWT_AUDIENCE:?Set IDENTITY_JWT_AUDIENCE in .env}"
       RsaKeys__PrivateKeyPath: /var/lib/identity/keys/private.pem
       RsaKeys__PublicKeyPath: /var/lib/identity/keys/public.pem

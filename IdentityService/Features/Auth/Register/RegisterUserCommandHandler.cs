@@ -1,6 +1,5 @@
 using IdentityService.Security.Tokens;
 using IdentityService.Email;
-using IdentityService.Features.Users;
 namespace IdentityService.Features.Auth.Register;
 
 internal sealed class RegisterUserCommandHandler(UserManager<ApplicationUser> userManager, AuthDbContext dbContext,

@@ -9,21 +9,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS development
 WORKDIR /src/IdentityService
 RUN mkdir -p bin obj /var/lib/identity/keys && chown -R $APP_UID /src /var/lib/identity
 USER $APP_UID
-COPY ["IdentityService/IdentityService.csproj", "./"]
-COPY --chown=$APP_UID Audit.Contracts/ /src/Audit.Contracts/
+COPY IdentityService.csproj ./
 RUN dotnet restore
 ENTRYPOINT ["dotnet", "watch", "--project", "IdentityService.csproj", "--non-interactive", "--no-hot-reload", "run", "--no-launch-profile"]
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
-WORKDIR /src
-COPY ["IdentityService/IdentityService.csproj", "IdentityService/"]
-COPY ["Audit.Contracts/Audit.Contracts.csproj", "Audit.Contracts/"]
-RUN dotnet restore "./IdentityService/IdentityService.csproj"
+WORKDIR /src/IdentityService
+COPY IdentityService.csproj ./
+RUN dotnet restore IdentityService.csproj
 # Copy only the service sources: never the whole build context (it may contain .env or other secrets).
-COPY IdentityService/ IdentityService/
-COPY Audit.Contracts/ Audit.Contracts/
-WORKDIR "/src/IdentityService"
+COPY . .
 RUN dotnet build "./IdentityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
