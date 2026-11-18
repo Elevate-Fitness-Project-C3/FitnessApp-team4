@@ -1,6 +1,14 @@
-# AuditService — أساس الخدمة، المرحلة الثانية
+# AuditService
 
-خدمة ASP.NET Core مستقلة تستهدف .NET 10 وتملك قاعدة SQL Server مخصصة (`AuditDb`). تعرض حاليًا فحوص صحة فقط. لا توجد واجهات قراءة تاريخ أو كتابة، ولا consumers أو producers أو MassTransit أو RabbitMQ أو transactional outbox. لم يتغير أي مشروع أعمال أو عقد V1.
+خدمة التدقيق المركزية للمشروع. تستقبل أحداث الخدمات عبر MassTransit، وتحفظها في قاعدة SQL Server خاصة بها (`AuditDb`)، وتعرض تقارير التدقيق وفحوص الصحة. يستخدم MassTransit وسيط RabbitMQ لنقل الرسائل بين العمليات.
+
+## التشغيل والربط
+
+- للتشغيل المستقل من مجلد `AuditService` استخدم `docker compose -f compose.audit.yml up -d` بعد إعداد قاعدة Audit ومتغيرات الاتصال والوسيط. إعدادات الوسيط وسكربت تهيئته في `Operations/RabbitMq`.
+- لتشغيل Audit مع Identity من جذر المستودع اضبط `AUDIT_SERVICE_DIRECTORY=./AuditService` ثم استخدم `docker compose -f docker-compose.yml -f AuditService/compose.audit.yml -f IdentityService/Messaging/compose.audit.yml up -d`. يمكن إضافة ملف التطوير المعتاد عند التشغيل المحلي.
+- شغّل الوسيط وطبّق migrations الخاصة بكل خدمة وهيّئ الـtopology عبر `Operations/RabbitMq/InitializeBroker.ps1` قبل تفعيل `AUDIT_MESSAGING_ENABLED` و`IDENTITY_AUDIT_MESSAGING_ENABLED`. إعداد الوسيط المرفق يستخدم المنفذ `5672` للتطوير. لاستخدامه اضبط بيئتي التطبيق على `Development`، ومنفذي `AUDIT_BROKER_PORT` و`IDENTITY_AUDIT_BROKER_PORT` على `5672`، وخياري `AUDIT_BROKER_USE_TLS` و`IDENTITY_AUDIT_BROKER_USE_TLS` على `false`. خارج التطوير استخدم وسيطًا مجهزًا بـTLS واضبط عنوانه ومنفذه لكل خدمة.
+- لربط خدمة أخرى، أضف عقد V1 إلى مشروعها ثم أرسل الحدث عبر MassTransit إلى `exchange:audit.<source-service>.v1`. أضف ملف المصدر وسياسات أفعاله إلى `Messaging:Sources` في Audit، وشغّل سكربت التهيئة مع `-SourceService <source-service>` وبحساب ناشر مستقل. تفاصيل الإعداد في [عقد Audit V1](Messaging/Contracts/README.md).
+- للتحقق من صلاحية قراءة التقارير اضبط `AUDIT_IDENTITY_BASE_URL`. يمرر Compose قيمة `AUDIT_REPORTING_SERVICE_KEY` إلى الخدمتين. إذا ضبطت `IDENTITY_AUDIT_REPORTING_SERVICE_KEY` صراحةً، يجب أن يطابق المفتاح المشترك. استخدم مفتاحًا مستقلًا لتوقيع مؤشر الصفحات في `AUDIT_REPORTING_CURSOR_KEY`.
 
 ## الملكية والبنية
 
@@ -28,7 +36,7 @@ AuditService/
     ConfigureDatabasePermissions.sql
 ```
 
-المرجع المشترك الوحيد هو `Audit.Contracts` لاستخدام تعريفَي actor/status المعتمدين، دون ربط الخدمة بكيانات IdentityService أو assembly أعمال. تعتمد الخدمة على `Microsoft.EntityFrameworkCore.SqlServer` و`Microsoft.EntityFrameworkCore.Design` بالإصدار `10.0.15`؛ حزمة Design خاصة بأدوات التطوير.
+تعريفات عقد الرسائل موجودة داخل `Messaging/Contracts` في كل خدمة تستخدمه. تعتمد خدمة Audit على `Microsoft.EntityFrameworkCore.SqlServer` و`Microsoft.EntityFrameworkCore.Design` بالإصدار `10.0.15`.
 
 `CreatedBy`, `CreatedAt`, `LastModifiedBy`, `LastModifiedAt` أعمدة محلية في كيانات الأعمال داخل كل خدمة. ليست جداول أو metadata مركزية هنا. AuditService تحفظ التاريخ فقط، ولا تصل إلى قاعدة أي خدمة أخرى. تنشئ عمليات provisioning قاعدة الخدمة وحسابها المنفصلين؛ لا تستخدم اتصال IdentityDb أو حسابًا يمتلك جميع قواعد الخدمات.
 
@@ -66,7 +74,7 @@ AuditService/
 | `PayloadHash` | `binary(32)` | digest SHA-256، صيغة canonical input تعتمد قبل consumer |
 | `FirstIngestedAtUtc` | `datetimeoffset(7)` | وقت أول قبول UTC |
 
-كل حقول receipts إلزامية. لا FK بين الجدولين؛ يجب أن يبقى receipt بعد أرشفة الحدث. صيغة hash ثنائية ثابتة بدل تمثيل hex نصي؛ ليست تغييرًا لعقد الرسالة لأن receipts بيانات داخلية. لا يوجد تنفيذ hashing أو deduplication consumer بعد.
+كل حقول receipts إلزامية. يبقى receipt بعد أرشفة الحدث. يحسب المستهلك بصمة SHA-256 من تمثيل JSON مرتب المفاتيح ويقارن البصمة قبل قبول إعادة إرسال معرّف الحدث نفسه.
 
 القيود التسعة:
 
@@ -77,7 +85,7 @@ AuditService/
 - وقت الحدث والاستقبال وأول receipt غير افتراضي وoffset صفر.
 - JSON صالح من نوع object أو SQL NULL في before/after؛ arrays/scalars ليست payload المستوى الأعلى المسموح.
 
-تستخدم المعرفات والنطاقات collation `Latin1_General_100_BIN2` لمقارنة حساسة لحالة الأحرف، دون تغيير قاعدة البيانات العامة. التحقق الكامل من ASCII والمعرفات وwhitespace والنطاق والتفويض وقائمة سماح القيم سيبقى مسؤولية إدخال الأحداث في المرحلة الرابعة؛ قيود SQL ليست إثباتًا للثقة أو فلترًا للأسرار.
+تستخدم المعرفات والنطاقات collation `Latin1_General_100_BIN2`. يفرض المستهلك حدود المعرفات، ويطابق نطاقات التطبيق والمستأجر وقوائم السماح بالقيم قبل الحفظ.
 
 الفهارس:
 
@@ -91,9 +99,11 @@ AuditService/
 
 فُحصت الحدود القصوى لأحجام مفاتيح الفهارس مقابل 900 بايت للمفتاح clustered و1700 للفهرس nonclustered. فهارس action/status/device/IP إضافية مؤجلة إلى قياس أحمال التقارير.
 
+يستخدم بحث التقارير نطاقًا زمنيًا على `TimestampUtc` حتى عند ترتيب النتائج حسب `IngestedAtUtc`. تدعم الفهارس الحالية النطاقات والتصفية والترتيب حسب وقت الحدث مع `Id`. ترتيب وقت الإدخال قد يحتاج خطوة فرز؛ يتوقف قرار فهرس إضافي على خطط التنفيذ وقياسات الاستخدام.
+
 ## التشغيل والإعداد الآمن
 
-الإعداد المطلوب هو `ConnectionStrings:AuditDb`. يقرأ التطبيق وأداة EF إعدادات ASP.NET Core المعتادة، ومنها environment variables وuser-secrets في Development. لا توجد credentials أو connection string فعلية في الملفات.
+تحدد `ConnectionStrings:AuditDb` الخادم وقاعدة البيانات واسم مستخدم التطبيق وإعدادات TLS. الإعداد المرفق يستخدم `sql-server,1433` و`AuditDb` و`audit_app`. يمرر Compose كلمة المرور من `AUDIT_SQL_PASSWORD` إلى `Database:Password`. عند تشغيل Audit بصورة مستقلة، عيّن اسم خادم SQL المتاح لها عبر إعدادات الخدمة. يقرأ التطبيق وأداة EF إعدادات ASP.NET Core المعتادة، ومنها environment variables وuser-secrets في Development.
 
 مثال جلسة PowerShell للتطوير المحلي باستخدام Windows Authentication:
 
@@ -113,15 +123,17 @@ dotnet run --project AuditService/AuditService.csproj --no-launch-profile
 
 - `GET /health/live`: HTTP 200 إذا كان process يستجيب، دون SQL.
 - `GET /health/ready`: HTTP 200 فقط مع اتصال ناجح ودون تغييرات model غير ممثلة في migration ودون migrations معلقة؛ وإلا HTTP 503.
-- الردود status فقط، دون تفاصيل اتصال أو schema أو exception. لا تعني الجاهزية أن ingestion أو reporting متاحان؛ كلاهما غير منفذ.
+- `GET /health/messaging`: حالة إعداد الاستقبال والناقل. يعيد HTTP 503 عند التعطيل أو تدهور الناقل.
+  استخدمه مع فحص جاهزية قاعدة البيانات عند تشغيل الاستقبال.
+- فحوص الصحة تعرض الحالة فقط. يعتمد توفر التقارير أيضًا على وصول Audit إلى نقطة التفويض في Identity وعلى إعداد مفتاح المؤشر.
 
-يستخدم التطبيق JSON console logging فقط، دون اعتماد على صلاحيات Windows Event Log. قُيدت logs الخاصة بـEF وSqlClient برمجيًا، مع تعطيل sensitive data logging وdetailed errors، وإرجاع نتيجة صحية عامة دون حفظ exception في HealthCheckResult. لا يوجد request-body أو payload logging. تضاف observability آمنة ذات أكواد أخطاء محدودة في المراحل اللاحقة دون إخراج الاستثناء الخام.
+يستخدم التطبيق JSON console logging. تظهر تحذيرات الناقل واتصال SQL، وتظل سجلات أوامر EF وتحديثاته التي قد تتضمن قيم الصفوف معطلة في Audit. يسجل معالج أخطاء التقارير معرّف التتبع ونوع الخطأ ورقم SQL المتاح. إعدادات EF تعطل sensitive data logging وdetailed errors.
 
 ## migrations والنشر
 
 المتطلب SQL Server 2022 أوأحدث، لأن `ISJSON(value, OBJECT)` يستخدم قيد نوع JSON المتاح من 2022. راجع [توثيق Microsoft](https://learn.microsoft.com/en-us/sql/t-sql/functions/isjson-transact-sql?view=sql-server-ver16).
 
-ولد EF migration `20261117185026_InitialAuditStorage` وdesigner وsnapshot. ينشئ الجدولين والقيود والفهارس فقط، دون seeds أو حسابات أو tables messaging أو تعديل قواعد الخدمات الأخرى. توليد migration/script لا يطبق التغييرات على SQL.
+تنشئ migration `20261117185026_InitialAuditStorage` جدولي السجل والإيصالات والفهارس والقيود. تضيف `20261117191028_AddMessagingInboxOutbox` جداول الرسائل المطلوبة لتشغيل المستهلك.
 
 بعد provisioning قاعدة مخصصة ومراجعة script، يستخدم مشغل النشر اتصال حساب migrations منفصلًا:
 
@@ -147,13 +159,8 @@ dotnet ef migrations has-pending-model-changes --project AuditService/AuditServi
 
 ```powershell
 dotnet build AuditService/AuditService.csproj -c Release
-dotnet build Audit.Contracts/Audit.Contracts.csproj -c Release
 ```
 
 أزيل مشروعا التحقق التنفيذي المؤقتان وfixture بطلب المستخدم في تنظيف نهاية اليوم. النتائج السابقة محفوظة في تقارير الحالة والتشخيص بوصفها تاريخية، ولا يوجد حاليًا runner ضمن solution. يلزم بناء اختبارات دائمة للنموذج وSQL والتفرد والفهارس وsnapshot وappend-only وreadiness عند الاستئناف، دون استخدام InMemory لإثبات معاملات SQL.
 
 نجاح هذه الفحوص ليس نجاح تكامل قاعدة فعلية. يبقى مطلوبًا على SQL Server 2022 معزول: تطبيق migration، وتجربة قبول/رفض constraints تحت null وUnicode، والتكرار المتزامن، وUTC، وJSON، وصلاحيات حساب التشغيل، وحالات readiness قبل وبعد التطبيق. Docker daemon غير متاح في جلسة التنفيذ الحالية، فلم تدع المراجعة تنفيذ ذلك.
-
-## قبل المرحلة الثالثة
-
-إعادة التحقق واعتماد إصدار MassTransit وترخيصه وتوافقه مع EF Core 10، ثم اعتماد source isolation وbroker credentials وTLS وqueues وخطة retries/inbox/outbox. لا تضف هذه الجداول إلى migration الحالية؛ ستكون migration مستقلة بعد الموافقة. تبقى schema grants ونطاقات التقارير وعقد التحقق الداخلي مع IdentityService واعتماد canonical hashing وحد payload ومنع الأسرار وآلية failure auditing وretention قرارات مراحلها، وليست ميزات جاهزة هنا.

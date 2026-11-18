@@ -9,17 +9,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Use portable structured output without requiring Windows Event Log permissions.
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole();
-// Database failures must not expose connection strings, command values, or event payloads.
-builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.None);
-builder.Logging.AddFilter("Microsoft.Data.SqlClient", LogLevel.None);
-builder.Logging.AddFilter("MassTransit", LogLevel.None);
+// SQL command/update exceptions can contain values from rejected rows.
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.None);
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore.Update", LogLevel.None);
+builder.Logging.AddFilter("MassTransit", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", LogLevel.None);
 builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.None);
 builder.Services.AddControllers();
-builder.Services.AddHttpClient<AuditService.Security.AuditReportAuthorization>(client => client.Timeout = TimeSpan.FromSeconds(5))
+builder.Services.AddHttpClient<AuditService.Features.AuditEvents.Reports.AuditReportAuthorization>(client => client.Timeout = TimeSpan.FromSeconds(5))
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
-builder.Services.AddSingleton<AuditService.Features.Reports.AuditCursorCodec>();
-builder.Services.AddScoped<AuditService.Features.Reports.AuditReportQuery>();
+builder.Services.AddSingleton<AuditService.Features.AuditEvents.Reports.AuditCursorCodec>();
+builder.Services.AddScoped<AuditService.Features.AuditEvents.Reports.AuditReportQuery>();
 var connection = AuditDatabaseConfiguration.GetConnectionString(builder.Configuration);
 builder.Services.AddDbContext<AuditDbContext>(options => options
     .UseSqlServer(connection, sql => sql.CommandTimeout(5))
@@ -34,6 +34,9 @@ app.UseExceptionHandler(handler => handler.Run(async context =>
 {
     var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
     context.Response.StatusCode = exception is Microsoft.Data.SqlClient.SqlException or DbUpdateException ? 503 : 500;
+    var sql = exception as Microsoft.Data.SqlClient.SqlException ?? exception?.InnerException as Microsoft.Data.SqlClient.SqlException;
+    app.Logger.LogError("Audit request failed. TraceId={TraceId} ExceptionType={ExceptionType} SqlError={SqlError}",
+        System.Diagnostics.Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier, exception?.GetType().Name, sql?.Number);
     await context.Response.WriteAsJsonAsync(new { Success = false, StatusCode = context.Response.StatusCode, Message = "The audit operation is temporarily unavailable." });
 }));
 app.MapControllers();
@@ -42,6 +45,13 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = registration => registration.Tags.Contains("ready")
 });
-app.MapHealthChecks("/health/messaging", new HealthCheckOptions { Predicate = registration => registration.Tags.Contains("masstransit") });
+app.MapHealthChecks("/health/messaging", new HealthCheckOptions
+{
+    Predicate = registration => registration.Tags.Contains("masstransit"),
+    ResultStatusCodes =
+    {
+        [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable
+    }
+});
 // Migrations are applied by a separate deployment identity, never by the web process.
 app.Run();

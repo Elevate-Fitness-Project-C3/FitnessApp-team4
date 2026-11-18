@@ -18,4 +18,12 @@ public sealed class AuditSourceOptions
     public string ApplicationId { get; set; } = "";
     public bool AllowApplicationEvents { get; set; }
     public string[] TenantIds { get; set; } = [];
+    public AuditActionOptions[] Actions { get; set; } = [];
+}
+
+public sealed class AuditActionOptions
+{
+    public string Action { get; set; } = "";
+    public string EntityType { get; set; } = "";
+    public Dictionary<string, string> ChangeFields { get; set; } = new(StringComparer.Ordinal);
 }

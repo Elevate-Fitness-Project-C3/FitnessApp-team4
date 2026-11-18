@@ -15,8 +15,11 @@ public static class AuditMessagingConfiguration
         var user = configuration["Messaging:UserName"];
         var password = configuration["Messaging:Password"];
         var tls = configuration.GetValue("Messaging:UseTls", true);
-        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password) || !development && !tls)
-            throw new InvalidOperationException("Identity audit messaging requires explicit credentials and TLS outside Development.");
+        var port = configuration.GetValue<ushort>("Messaging:Port", 5672);
+        var virtualHost = configuration["Messaging:VirtualHost"] ?? "audit";
+        if (string.IsNullOrWhiteSpace(host) || string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(password)
+            || port == 0 || string.IsNullOrWhiteSpace(virtualHost) || !development && !tls)
+            throw new InvalidOperationException("Identity audit messaging requires valid broker settings, explicit credentials, and TLS outside Development.");
         services.AddMassTransit(bus =>
         {
             bus.AddEntityFrameworkOutbox<AuthDbContext>(outbox =>
@@ -28,7 +31,7 @@ public static class AuditMessagingConfiguration
             bus.UsingRabbitMq((context, rabbit) =>
             {
                 rabbit.OverrideDefaultBusEndpointQueueName($"identity-bus-{Guid.NewGuid():N}");
-                rabbit.Host(host, configuration.GetValue<ushort>("Messaging:Port", 5672), configuration["Messaging:VirtualHost"] ?? "audit", settings =>
+                rabbit.Host(host, port, virtualHost, settings =>
                 {
                     settings.Username(user);
                     settings.Password(password);

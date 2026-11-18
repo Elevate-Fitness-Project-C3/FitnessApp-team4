@@ -2,6 +2,7 @@ using AuditService.Persistence;
 using MassTransit;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AuditService.Messaging;
 
@@ -10,7 +11,6 @@ public static class AuditMessagingConfiguration
     public static IServiceCollection AddAuditMessaging(this IServiceCollection services, IConfiguration configuration, bool development)
     {
         var options = configuration.GetSection("Messaging").Get<AuditMessagingOptions>() ?? new();
-        services.Configure<AuditMessagingOptions>(configuration.GetSection("Messaging"));
         services.AddHealthChecks().AddCheck("audit-messaging-enabled", () => options.Enabled
             ? Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy()
             : Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Unhealthy("Audit messaging is disabled."), tags: ["masstransit"]);
@@ -18,9 +18,11 @@ public static class AuditMessagingConfiguration
         if (string.IsNullOrWhiteSpace(options.Host) || string.IsNullOrWhiteSpace(options.UserName)
             || string.IsNullOrWhiteSpace(options.Password) || options.Sources.Length == 0
             || (!development && !options.UseTls)
-            || options.Sources.Any(x => !ValidSource(x.SourceService) || string.IsNullOrWhiteSpace(x.ApplicationId))
+            || options.Port == 0 || string.IsNullOrWhiteSpace(options.VirtualHost)
+            || options.Sources.Any(x => !ValidSource(x.SourceService) || !AuditEventValidation.ValidProfile(x))
             || options.Sources.Select(x => x.SourceService).Distinct(StringComparer.Ordinal).Count() != options.Sources.Length)
-            throw new InvalidOperationException("Audit messaging requires explicit credentials, unique source profiles, and TLS outside Development.");
+            throw new InvalidOperationException("Audit messaging requires explicit broker settings, unique and valid source profiles, action policies, and TLS outside Development.");
+        services.AddSingleton<IOptions<AuditMessagingOptions>>(Options.Create(options));
         services.AddScoped<AuditEventIngestor>();
         services.AddMassTransit(bus =>
         {
@@ -75,6 +77,6 @@ public static class AuditMessagingConfiguration
         return services;
     }
 
-    public static bool ValidSource(string value) => value.Length is > 0 and <= 64
+    public static bool ValidSource(string? value) => value is { Length: > 0 and <= 64 }
         && value.All(c => c is >= 'a' and <= 'z' or >= '0' and <= '9' or '-');
 }

@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Reflection;
+using IdentityService.Security.Auditing;
 namespace IdentityService.Common;
 
 public static class DependencyInjection
@@ -16,9 +17,11 @@ public static class DependencyInjection
     {
         services.AddApplication();
         services.AddHttpContextAccessor();
+        services.AddSingleton(SecurityAuditScope.FromConfiguration(configuration));
         services.AddScoped<IdentityService.Security.Auditing.AuditActorContext>();
         services.AddScoped<IdentityService.Security.Auditing.SecurityAuditWriter>();
-        services.AddScoped<IdentityService.Features.Roles.SecurityMutationChecks>();
+        services.AddScoped<IdentityService.Security.Authorization.SecurityMutationChecks>();
+        services.AddScoped<IdentityService.Security.Authorization.SecurityMutationOrchestrator>();
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, IdentityService.Security.Authorization.ApiAuthorizationResultHandler>();
         services.AddScoped<IdentityService.Security.Authorization.EffectivePermissionResolver>();
         services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider, IdentityService.Security.Authorization.PermissionPolicyProvider>();
@@ -39,9 +42,9 @@ public static class DependencyInjection
     }
     private static void AddPersistence(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
     {
-        var connection = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connection)) throw new InvalidOperationException("Database connection configuration is required.");
-        services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connection));
+        var connection = IdentityDatabaseConfiguration.GetConnectionString(configuration);
+        services.AddDbContext<AuthDbContext>(options => options.UseSqlServer(connection)
+            .EnableSensitiveDataLogging(false).EnableDetailedErrors(false));
         services.AddScoped<UserLockScope>();
         var protection = services.AddDataProtection().SetApplicationName("IdentityService").PersistKeysToDbContext<AuthDbContext>();
         var certificatePath = configuration["DataProtection:CertificatePath"];

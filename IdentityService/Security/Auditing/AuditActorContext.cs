@@ -4,6 +4,14 @@ namespace IdentityService.Security.Auditing;
 
 public sealed class AuditActorContext(IHttpContextAccessor accessor)
 {
+    internal static readonly object CommittedMutationKey = new();
+
+    internal void MarkMutationCommitted()
+    {
+        if (accessor.HttpContext is { } context)
+            context.Items[CommittedMutationKey] = true;
+    }
+
     public bool IsHttpRequest => accessor.HttpContext is not null;
     public string? UserId => accessor.HttpContext?.User.Identity?.IsAuthenticated == true
         ? accessor.HttpContext.User.FindFirstValue("sub") : null;
@@ -16,7 +24,9 @@ public sealed class AuditActorContext(IHttpContextAccessor accessor)
         get
         {
             var value = accessor.HttpContext?.Request.Headers.UserAgent.ToString();
-            return string.IsNullOrWhiteSpace(value) ? null : new string(value.Where(c => !char.IsControl(c)).Take(1024).ToArray());
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            var normalized = new string(value.Where(c => !char.IsControl(c)).Take(1024).ToArray()).Trim();
+            return normalized.Length == 0 ? null : normalized;
         }
     }
 }

@@ -1,0 +1,50 @@
+# Provision the Audit database and broker topology before enabling messaging.
+services:
+  rabbitmq:
+    image: rabbitmq:4.4.1-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: "${AUDIT_BROKER_ADMIN_USER:?Set AUDIT_BROKER_ADMIN_USER}"
+      RABBITMQ_DEFAULT_PASS: "${AUDIT_BROKER_ADMIN_PASSWORD:?Set AUDIT_BROKER_ADMIN_PASSWORD}"
+      RABBITMQ_DEFAULT_VHOST: audit
+    volumes:
+      - audit-broker-data:/var/lib/rabbitmq
+      - ${AUDIT_SERVICE_DIRECTORY:-.}/Operations/RabbitMq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    # Administrative API is local only. Do not forward this port through a production ingress.
+    ports:
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [fitness-network]
+  audit-service:
+    build:
+      context: "${AUDIT_SERVICE_DIRECTORY:-.}"
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ASPNETCORE_ENVIRONMENT: "${AUDIT_ENVIRONMENT:-Production}"
+      Reporting__IdentityBaseUrl: "${AUDIT_IDENTITY_BASE_URL:-}"
+      Reporting__ServiceKey: "${AUDIT_REPORTING_SERVICE_KEY:-}"
+      Reporting__CursorKey: "${AUDIT_REPORTING_CURSOR_KEY:-}"
+      Database__Password: "${AUDIT_SQL_PASSWORD:-}"
+      AllowedHosts: "${AUDIT_ALLOWED_HOSTS:-localhost;127.0.0.1;audit-service}"
+      Messaging__Enabled: "${AUDIT_MESSAGING_ENABLED:-false}"
+      Messaging__Host: "${AUDIT_BROKER_HOST:-rabbitmq}"
+      Messaging__VirtualHost: audit
+      Messaging__UserName: "${AUDIT_BROKER_USER:?Set AUDIT_BROKER_USER}"
+      Messaging__Password: "${AUDIT_BROKER_PASSWORD:?Set AUDIT_BROKER_PASSWORD}"
+      Messaging__UseTls: "${AUDIT_BROKER_USE_TLS:-true}"
+      Messaging__Port: "${AUDIT_BROKER_PORT:-5671}"
+      Messaging__Sources__0__SourceService: identity-service
+      Messaging__Sources__0__ApplicationId: "${IDENTITY_AUDIT_APPLICATION_ID:-fitness}"
+      Messaging__Sources__0__AllowApplicationEvents: "true"
+    networks: [fitness-network]
+volumes:
+  audit-broker-data:
+networks:
+  fitness-network:
+    driver: bridge

@@ -1,3 +1,4 @@
+# Keep local build artifacts and secrets out of the service build context.
 **/.git
 **/.vs
 **/.vscode
@@ -7,7 +8,12 @@
 **/*.user
 **/.env
 **/.env.*
+!**/.env.example
 **/*.pem
 **/*.pfx
 **/*.key
+**/*.p12
 **/secrets.json
+.secrets
+secrets
+sql-init

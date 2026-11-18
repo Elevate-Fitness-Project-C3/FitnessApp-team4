@@ -1,4 +1,4 @@
-using IdentityService.Features.Roles;
+using IdentityService.Security.Authorization;
 using IdentityService.Persistence.Seeding;
 using IdentityService.Security.Auditing;
 using IdentityService.Security.Tokens;
@@ -14,6 +14,7 @@ public static class SecurityBootstrap
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roles = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var checks = scope.ServiceProvider.GetRequiredService<SecurityMutationChecks>();
+        var applicationId = scope.ServiceProvider.GetRequiredService<SecurityAuditScope>().ApplicationId;
         var id = configuration["SecurityBootstrap:UserId"];
         if (string.IsNullOrWhiteSpace(id)) throw new InvalidOperationException("Set SecurityBootstrap:UserId to an existing confirmed, active user.");
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -35,8 +36,8 @@ public static class SecurityBootstrap
         role.ConcurrencyStamp = Guid.NewGuid().ToString();
         await db.SaveChangesAsync(cancellationToken);
         if (!await users.IsInRoleAsync(user, name) && !(await users.AddToRoleAsync(user, name)).Succeeded) throw new InvalidOperationException("Security bootstrap role assignment failed.");
-        if (!await db.Set<AuditReportGrant>().AnyAsync(x => x.UserId == user.Id && x.ApplicationId == "fitness" && x.TenantId == null && x.SourceService == "identity-service", cancellationToken))
-            db.Add(new AuditReportGrant { Id = Guid.NewGuid(), UserId = user.Id, ApplicationId = "fitness", SourceService = "identity-service" });
+        if (!await db.Set<AuditReportGrant>().AnyAsync(x => x.UserId == user.Id && x.ApplicationId == applicationId && x.TenantId == null && x.SourceService == SecurityAuditScope.SourceService, cancellationToken))
+            db.Add(new AuditReportGrant { Id = Guid.NewGuid(), UserId = user.Id, ApplicationId = applicationId, SourceService = SecurityAuditScope.SourceService });
         await scope.ServiceProvider.GetRequiredService<SecurityAuditWriter>().RecordAsync("Identity.SecurityBootstrap", "User", user.Id, null, SecurityAuditWriter.Values("roleId", role.Id), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }

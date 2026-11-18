@@ -8,7 +8,6 @@
   <ItemGroup>
     <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.12" />
     <PackageReference Include="MassTransit.EntityFrameworkCore" Version="8.5.12" />
-    <ProjectReference Include="../Audit.Contracts/Audit.Contracts.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15">
       <PrivateAssets>all</PrivateAssets>

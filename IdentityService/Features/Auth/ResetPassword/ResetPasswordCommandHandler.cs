@@ -1,4 +1,3 @@
-using IdentityService.Features.Users;
 using IdentityService.Security.Tokens;
 namespace IdentityService.Features.Auth.ResetPassword;
 
