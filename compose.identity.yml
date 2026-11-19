@@ -1,0 +1,63 @@
+name: identity-platform
+services:
+  identity-service:
+    image: fitness-identity:development
+    build:
+      context: ./IdentityService
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "127.0.0.1:5002:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      Database__Password: "${IDENTITY_SQL_PASSWORD:-}"
+      Jwt__Audience: "${IDENTITY_JWT_AUDIENCE:?Set IDENTITY_JWT_AUDIENCE in .env}"
+      RsaKeys__PrivateKeyPath: /var/lib/identity/keys/private.pem
+      RsaKeys__PublicKeyPath: /var/lib/identity/keys/public.pem
+      DevelopmentSetup__GenerateRsaKeys: "true"
+      DOTNET_USE_POLLING_FILE_WATCHER: "1"
+      DOTNET_WATCH_SUPPRESS_LAUNCH_BROWSER: "1"
+      Email__Host: "${IDENTITY_EMAIL_HOST:-smtp.gmail.com}"
+      Email__Port: "${IDENTITY_EMAIL_PORT:-587}"
+      Email__EnableSsl: "${IDENTITY_EMAIL_ENABLE_SSL:-true}"
+      Email__UserName: "${IDENTITY_EMAIL_USERNAME:?Set IDENTITY_EMAIL_USERNAME in .env}"
+      Email__Password: "${IDENTITY_EMAIL_PASSWORD:?Set IDENTITY_EMAIL_PASSWORD in .env}"
+      Email__From: "${IDENTITY_EMAIL_FROM:?Set IDENTITY_EMAIL_FROM in .env}"
+      EmailBranding__ApplicationName: "${IDENTITY_APPLICATION_NAME:-Identity Service}"
+      EmailBranding__TeamName: "${IDENTITY_TEAM_NAME:-Support Team}"
+      EmailBranding__ConfirmEmailSubject: "${IDENTITY_CONFIRM_EMAIL_SUBJECT:-Confirm email}"
+      EmailBranding__ResetPasswordSubject: "${IDENTITY_RESET_PASSWORD_SUBJECT:-Reset password}"
+    volumes:
+      - identity-rsa-keys:/var/lib/identity/keys
+      - ./IdentityService:/src/IdentityService:ro
+      - identity-dev-bin:/src/IdentityService/bin
+      - identity-dev-obj:/src/IdentityService/obj
+    depends_on:
+      sql-server:
+        condition: service_healthy
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: Y
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: "${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}"
+    ports:
+      - "127.0.0.1:14330:1433"
+    volumes:
+      - identity-sql-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q ''SELECT 1'' >/dev/null || exit 1',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+volumes:
+  identity-dev-bin:
+  identity-dev-obj:
+  identity-sql-data:
+  identity-rsa-keys:

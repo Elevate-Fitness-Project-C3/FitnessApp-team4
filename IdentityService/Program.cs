@@ -1,14 +1,86 @@
+
+using IdentityService.Common;
+using IdentityService.Common.Exceptions;
+using IdentityService.Common.OpenApi;
+using IdentityService.Persistence.Seeding;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
+builder.Logging.AddFilter("MassTransit", LogLevel.Warning);
 
-builder.Services.AddApplicationServices();
+// SQL command/update exceptions can contain values from rejected rows.
+builder.Logging.AddFilter(
+    "Microsoft.EntityFrameworkCore.Database.Command",
+    LogLevel.None);
 
-builder.Services.AddPersistence(builder.Configuration);
+builder.Logging.AddFilter(
+    "Microsoft.EntityFrameworkCore.Update",
+    LogLevel.None);
 
-builder.Services.AddIdentityServices();
+if (builder.Configuration.GetValue<bool>("DevelopmentSetup:GenerateRsaKeys"))
+{
+    if (!builder.Environment.IsDevelopment())
+        throw new InvalidOperationException(
+            "Automatic RSA generation is restricted to Development.");
+
+    IdentityService.Security.Keys.DevelopmentRsaSetup.Ensure(
+        builder.Configuration);
+}
+
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer<BearerSecurityDocumentTransformer>();
+    options.AddOperationTransformer<BearerSecurityOperationTransformer>();
+});
+
+builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+{
+    options.InvalidModelStateResponseFactory = context =>
+    {
+        var errors = context.ModelState
+            .Where(x => x.Value?.Errors.Count > 0)
+            .ToDictionary(
+                x => $"Validation.{x.Key}",
+                x => x.Value!.Errors
+                    .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage)
+                        ? "Invalid request value."
+                        : e.ErrorMessage)
+                    .ToArray());
+
+        return new Microsoft.AspNetCore.Mvc.BadRequestObjectResult(
+            IdentityService.Common.Responses.ApiResponse<object>.Fail(
+                "Validation failed.",
+                StatusCodes.Status400BadRequest,
+                errors));
+    };
+});
+
+builder.Services.AddDependencies(
+    builder.Configuration,
+    builder.Environment.IsDevelopment());
+
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
+app.UseExceptionHandler();
+
+_ = app.Services.GetRequiredService<
+    IdentityService.Security.Keys.RsaKeyProvider>();
+
+await DatabaseInitializer.InitializeAsync(app);
+
+if (builder.Configuration.GetValue<bool>("SecurityBootstrap:Execute"))
+{
+    await IdentityService.Operations.SecurityBootstrap.RunAsync(
+        app.Services,
+        builder.Configuration,
+        app.Lifetime.ApplicationStopping);
+
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -22,6 +94,47 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
+
+app.UseRouting();
+app.UseRateLimiter();
+
+app.UseMiddleware<
+    IdentityService.Security.Auditing.SecurityFailureAuditMiddleware>();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapJwks();
+
+app.MapHealthChecks(
+    "/health/outbox",
+    new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        Predicate = registration =>
+            registration.Name == "email-outbox",
+
+        ResultStatusCodes =
+        {
+            [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] =
+                StatusCodes.Status503ServiceUnavailable
+        }
+    });
+
+app.MapHealthChecks(
+    "/health/messaging",
+    new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        Predicate = registration =>
+            registration.Tags.Contains("masstransit"),
+
+        ResultStatusCodes =
+        {
+            [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] =
+                StatusCodes.Status503ServiceUnavailable
+        }
+    });
 
 app.Run();

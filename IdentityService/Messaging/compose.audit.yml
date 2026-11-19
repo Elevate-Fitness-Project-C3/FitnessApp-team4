@@ -1,0 +1,12 @@
+services:
+  identity-service:
+    environment:
+      AuditReporting__ServiceKey: "${IDENTITY_AUDIT_REPORTING_SERVICE_KEY:-${AUDIT_REPORTING_SERVICE_KEY:-}}"
+      Messaging__Enabled: "${IDENTITY_AUDIT_MESSAGING_ENABLED:-false}"
+      Messaging__ApplicationId: "${IDENTITY_AUDIT_APPLICATION_ID:-fitness}"
+      Messaging__Host: "${IDENTITY_AUDIT_BROKER_HOST:-rabbitmq}"
+      Messaging__VirtualHost: "${IDENTITY_AUDIT_BROKER_VHOST:-audit}"
+      Messaging__UserName: "${IDENTITY_AUDIT_BROKER_USER:?Set IDENTITY_AUDIT_BROKER_USER}"
+      Messaging__Password: "${IDENTITY_AUDIT_BROKER_PASSWORD:?Set IDENTITY_AUDIT_BROKER_PASSWORD}"
+      Messaging__UseTls: "${IDENTITY_AUDIT_BROKER_USE_TLS:-true}"
+      Messaging__Port: "${IDENTITY_AUDIT_BROKER_PORT:-5671}"

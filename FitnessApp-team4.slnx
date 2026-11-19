@@ -6,6 +6,12 @@
     <Project Path="TrainingService.Infrastructure\TrainingService.Infrastructure.csproj" Type="Classic C#" />
   </Folder>
   <Project Path="docker-compose.dcproj" />
+
+  <Project Path="AuditService/AuditService.csproj" />
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
+
   <Project Path="FitnessProfileService/FitnessProfileService.csproj" />
   <Project Path="IdentityService/IdentityService.csproj" />
   <Project Path="NutritionService/NutritionService.csproj" />

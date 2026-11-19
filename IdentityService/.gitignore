@@ -1,0 +1,20 @@
+# secrets / keys / local config - never commit
+.env
+.env.*
+!.env.example
+appsettings.*.local.json
+secrets.json
+*.pem
+*.pfx
+*.key
+
+# build output and IDE files
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.DotSettings.user
+launchSettings.local.json
