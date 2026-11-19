@@ -17,7 +17,7 @@ public class Program :BaseEntity
 
     public ProgramStatus Status { get; private set; }
     
-    public ICollection<ProgramWorkout> WorkoutSlots { get; private set; }
+    public ICollection<ProgramWorkout> WorkoutSlots { get; private set; }=new List<ProgramWorkout>();
     
     public void AddWorkoutSlot(
         Guid workoutId,
@@ -45,8 +45,8 @@ public class Program :BaseEntity
             new ProgramWorkout(
                 Id,
                 workoutId,
-                weekNumber,
-                dayNumber));
+                dayNumber,
+                weekNumber));
     }
     
 }
