@@ -40,6 +40,9 @@ secrets/
 *.log
 *.tmp
 
+# Fody - auto-generated XML schema
+FodyWeavers.xsd
+.idea/
 # Operating system files
 .DS_Store
 Thumbs.db
