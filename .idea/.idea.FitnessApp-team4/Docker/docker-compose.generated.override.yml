@@ -1,0 +1,110 @@
+# This is a generated file. Not intended for manual editing.
+services:
+  fitness-profile-service:
+    build:
+      context: "/home/salmaashraf/Desktop/fitness/FitnessApp-team4"
+      dockerfile: "FitnessProfileService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/FitnessProfileService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "fitnessprofileservice:dev"
+    ports: []
+    volumes:
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4/FitnessProfileService:/app:rw"
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4:/src:rw"
+    - "/home/salmaashraf/.nuget/packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  identity-service:
+    build:
+      context: "/home/salmaashraf/Desktop/fitness/FitnessApp-team4"
+      dockerfile: "IdentityService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/IdentityService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "identityservice:dev"
+    ports: []
+    volumes:
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4/IdentityService:/app:rw"
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4:/src:rw"
+    - "/home/salmaashraf/.nuget/packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  nutrition-service:
+    build:
+      context: "/home/salmaashraf/Desktop/fitness/FitnessApp-team4"
+      dockerfile: "NutritionService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/NutritionService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "nutritionservice:dev"
+    ports: []
+    volumes:
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4/NutritionService:/app:rw"
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4:/src:rw"
+    - "/home/salmaashraf/.nuget/packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  payment-service:
+    build:
+      context: "/home/salmaashraf/Desktop/fitness/FitnessApp-team4"
+      dockerfile: "PaymentService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/PaymentService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "paymentservice:dev"
+    ports: []
+    volumes:
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4/PaymentService:/app:rw"
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4:/src:rw"
+    - "/home/salmaashraf/.nuget/packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  progress-service:
+    build:
+      context: "/home/salmaashraf/Desktop/fitness/FitnessApp-team4"
+      dockerfile: "ProgressService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/ProgressService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "progressservice:dev"
+    ports: []
+    volumes:
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4/ProgressService:/app:rw"
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4:/src:rw"
+    - "/home/salmaashraf/.nuget/packages:/home/app/.nuget/packages"
+    working_dir: "/app"
+  training-service:
+    build:
+      context: "/home/salmaashraf/Desktop/fitness/FitnessApp-team4"
+      dockerfile: "TrainingService/Dockerfile"
+      target: "base"
+    command: []
+    entrypoint:
+    - "dotnet"
+    - "/app/bin/Debug/net10.0/TrainingService.dll"
+    environment:
+      DOTNET_USE_POLLING_FILE_WATCHER: "true"
+    image: "trainingservice:dev"
+    ports: []
+    volumes:
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4/TrainingService:/app:rw"
+    - "/home/salmaashraf/Desktop/fitness/FitnessApp-team4:/src:rw"
+    - "/home/salmaashraf/.nuget/packages:/home/app/.nuget/packages"
+    working_dir: "/app"
