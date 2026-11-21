@@ -14,7 +14,7 @@ public sealed class CreateRoleCommandHandler(RoleManager<IdentityRole> roles, Se
         var role = new IdentityRole(request.Name);
         var result = await roles.CreateAsync(role);
         if (!result.Succeeded) return IdentityErrorMapper.ToResult<RoleDto>(result);
-        await audit.RecordAsync("Identity.RoleCreated", "Role", role.Id, null, SecurityAuditWriter.Values("name", role.Name), cancellationToken);
+        await audit.RecordAsync(AuditActions.RoleCreated, "Role", role.Id, null, SecurityAuditWriter.Values("name", role.Name), cancellationToken);
         return Result<RoleDto>.Success(new(role.Id, role.Name!, role.ConcurrencyStamp!, []));
     }
 }

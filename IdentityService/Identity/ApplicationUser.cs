@@ -7,6 +7,8 @@ public class ApplicationUser : IdentityUser
     public DateTimeOffset CreatedAt { get; set; }
     public string? LastModifiedBy { get; set; }
     public DateTimeOffset? LastModifiedAt { get; set; }
-    public string FirstName { get; set; }=string.Empty;
-    public string LastName { get; set; }=string.Empty;
+
+    public string FirstName { get; set; } = string.Empty;
+
+    public string LastName { get; set; } = string.Empty;
 }

@@ -1,3 +1,4 @@
+using IdentityService.Common;
 using IdentityService.Common.Responses;
 using IdentityService.Features.Roles.CreateRole;
 using IdentityService.Features.Roles.DeleteRole;
@@ -7,10 +8,11 @@ using IdentityService.Features.Roles.RenameRole;
 using IdentityService.Features.Roles.UpdateRolePermissions;
 using IdentityService.Security.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace IdentityService.Features.Roles;
 
-[ApiController, Route("api/roles")]
+[ApiController, EnableRateLimiting(RateLimitPolicies.Admin), Route("api/roles")]
 public sealed class RolesController(ISender sender) : ControllerBase
 {
     [HttpGet, HasPermission("Identity.Roles.Read")]

@@ -1,7 +1,6 @@
 using IdentityService.Security.Authorization;
 using IdentityService.Persistence.Seeding;
 using IdentityService.Security.Auditing;
-using IdentityService.Security.Tokens;
 
 namespace IdentityService.Operations;
 
@@ -20,7 +19,7 @@ public static class SecurityBootstrap
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         await SecurityAdministrationLock.AcquireAsync(db, cancellationToken);
         if (await checks.HasRecoveryAdministratorAsync(cancellationToken)) throw new InvalidOperationException("An authorized security administrator already exists. Bootstrap cannot overwrite security configuration.");
-        await RefreshTokenSessionLock.AcquireAsync(db, id, cancellationToken);
+        await UserRowLock.AcquireAsync(db, id, cancellationToken);
         var user = await users.FindByIdAsync(id);
         if (user is null || !user.IsActive || !user.EmailConfirmed) throw new InvalidOperationException("Bootstrap requires an existing confirmed, active user.");
         const string name = "SecurityAdministrator";
@@ -38,7 +37,7 @@ public static class SecurityBootstrap
         if (!await users.IsInRoleAsync(user, name) && !(await users.AddToRoleAsync(user, name)).Succeeded) throw new InvalidOperationException("Security bootstrap role assignment failed.");
         if (!await db.Set<AuditReportGrant>().AnyAsync(x => x.UserId == user.Id && x.ApplicationId == applicationId && x.TenantId == null && x.SourceService == SecurityAuditScope.SourceService, cancellationToken))
             db.Add(new AuditReportGrant { Id = Guid.NewGuid(), UserId = user.Id, ApplicationId = applicationId, SourceService = SecurityAuditScope.SourceService });
-        await scope.ServiceProvider.GetRequiredService<SecurityAuditWriter>().RecordAsync("Identity.SecurityBootstrap", "User", user.Id, null, SecurityAuditWriter.Values("roleId", role.Id), cancellationToken);
+        await scope.ServiceProvider.GetRequiredService<SecurityAuditWriter>().RecordAsync(AuditActions.SecurityBootstrap, "User", user.Id, null, SecurityAuditWriter.Values("roleId", role.Id), cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }
 }

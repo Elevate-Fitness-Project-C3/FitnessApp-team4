@@ -14,6 +14,7 @@ namespace IdentityService.Features.Auth;
 
 [ApiController]
 [EnableRateLimiting(RateLimitPolicies.Auth)]
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 [Route("api/auth")]
 [ProducesResponseType<ApiResponse<object>>(StatusCodes.Status429TooManyRequests)]
 [ProducesResponseType<ApiResponse<object>>(StatusCodes.Status500InternalServerError)]

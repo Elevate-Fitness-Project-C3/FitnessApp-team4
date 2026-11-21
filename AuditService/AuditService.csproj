@@ -14,4 +14,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="AuditService.Tests" />
+  </ItemGroup>
 </Project>

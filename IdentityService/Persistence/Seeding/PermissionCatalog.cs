@@ -11,10 +11,18 @@ public static class PermissionCatalog
         ("Identity.Users.Roles.Read", "عرض أدوار المستخدم"), ("Identity.Users.Roles.Assign", "إسناد الأدوار"),
         ("Identity.Users.Roles.Remove", "إزالة الأدوار"), ("Identity.Users.Permissions.Read", "عرض الصلاحيات الفعلية"),
         ("Identity.Users.Update", "إدارة نشاط الحساب"), ("Identity.AuditGrants.Manage", "إدارة نطاقات تقارير التدقيق"),
-        ("Audit.Reports.Read", "قراءة تقارير التدقيق"), ("Audit.Reports.ReadSensitiveMetadata", "قراءة بيانات الطلب الحساسة")
+        ("Audit.Reports.Read", "قراءة تقارير التدقيق"),
+        ("Audit.Reports.ReadSensitiveMetadata", "قراءة بيانات الطلب الحساسة"),
+        ("Identity.Users.Read", "عرض المستخدمين"),
+        ("Identity.Users.Profile.Update", "تعديل بيانات المستخدم"),
     ];
+
     public static readonly string[] RecoveryPermissions =
-    ["Identity.Roles.Read", "Identity.Roles.Create", "Identity.Roles.Permissions.Update", "Identity.Users.Roles.Assign", "Identity.Users.Roles.Remove", "Identity.Users.Update", "Identity.AuditGrants.Manage", "Audit.Reports.Read"];
+    [
+        "Identity.Roles.Read", "Identity.Roles.Create", "Identity.Roles.Permissions.Update",
+        "Identity.Users.Roles.Assign", "Identity.Users.Roles.Remove", "Identity.Users.Update",
+        "Identity.AuditGrants.Manage", "Audit.Reports.Read"
+    ];
 
     public static async Task SeedAsync(AuthDbContext db, CancellationToken cancellationToken)
     {
@@ -30,11 +38,19 @@ public static class PermissionCatalog
         foreach (var definition in groups)
         {
             var group = await db.Set<PermissionGroup>().FindAsync([definition.Code], cancellationToken);
-            if (group is null) { group = new PermissionGroup { Code = definition.Code }; db.Add(group); }
+            if (group is null)
+            {
+                group = new PermissionGroup { Code = definition.Code };
+                db.Add(group);
+            }
+
             group.ParentCode = definition.Parent;
             group.DisplayNameAr = definition.Arabic;
-            group.Owner = definition.Code.StartsWith("Audit", StringComparison.Ordinal) ? "AuditService" : "IdentityService";
+            group.Owner = definition.Code.StartsWith("Audit", StringComparison.Ordinal)
+                ? "AuditService"
+                : "IdentityService";
         }
+
         var permissions = await db.Set<Permission>().ToDictionaryAsync(x => x.Code, cancellationToken);
         for (var index = 0; index < Definitions.Length; index++)
         {
@@ -44,10 +60,12 @@ public static class PermissionCatalog
                 permission = new Permission { Code = definition.Code, GroupCode = "Identity" };
                 db.Add(permission);
             }
+
             permission.DisplayNameAr = definition.Arabic;
             permission.GroupCode = string.Join('.', definition.Code.Split('.').Take(2));
             permission.DisplayOrder = index;
         }
+
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
     }

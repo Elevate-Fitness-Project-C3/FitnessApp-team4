@@ -1,12 +1,14 @@
-using IdentityService.Security.Tokens;
 using IdentityService.Email;
+using IdentityService.Security.Tokens;
+
 namespace IdentityService.Features.Auth.Register;
 
-internal sealed class RegisterUserCommandHandler(UserManager<ApplicationUser> userManager, AuthDbContext dbContext,
-    AuthEmailQueue emailQueue, AuthEmailSignal emailSignal)
-    : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
+internal sealed class RegisterUserCommandHandler(
+    UserManager<ApplicationUser> userManager, AuthDbContext dbContext, AuthEmailQueue emailQueue,
+    AuthEmailSignal emailSignal) : IRequestHandler<RegisterUserCommand, Result<RegisterUserResponse>>
 {
-    public async Task<Result<RegisterUserResponse>> Handle(RegisterUserCommand request, CancellationToken cancellationToken)
+    public async Task<Result<RegisterUserResponse>> Handle(RegisterUserCommand request,
+        CancellationToken cancellationToken)
     {
         var email = request.Email.Trim();
         var user = new ApplicationUser
@@ -23,12 +25,10 @@ internal sealed class RegisterUserCommandHandler(UserManager<ApplicationUser> us
             try
             {
                 var creation = await userManager.CreateAsync(user, request.Password);
-                if (!creation.Succeeded)
-                    return IdentityErrorMapper.ToResult<RegisterUserResponse>(creation);
+                if (!creation.Succeeded) return IdentityErrorMapper.ToResult<RegisterUserResponse>(creation);
 
                 var assignment = await userManager.AddToRoleAsync(user, RoleNames.User);
-                if (!assignment.Succeeded)
-                    return IdentityErrorMapper.ToResult<RegisterUserResponse>(assignment);
+                if (!assignment.Succeeded) return IdentityErrorMapper.ToResult<RegisterUserResponse>(assignment);
 
                 await emailQueue.EnqueueAsync(user.Id, OtpPurpose.ConfirmEmail, cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
@@ -42,8 +42,7 @@ internal sealed class RegisterUserCommandHandler(UserManager<ApplicationUser> us
         }
 
         emailSignal.Notify();
-        return Result<RegisterUserResponse>.Success(new RegisterUserResponse(
-            UserId: user.Id, Email: user.Email!, FirstName: user.FirstName, LastName: user.LastName,
-            EmailVerificationRequired: true, EmailQueued: true));
+        return Result<RegisterUserResponse>.Success(new RegisterUserResponse(UserId: user.Id, Email: user.Email!,
+            FirstName: user.FirstName, LastName: user.LastName, EmailVerificationRequired: true, EmailQueued: true));
     }
 }
