@@ -7,20 +7,22 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\TrainingService.Domain\TrainingService.Domain.csproj" />
+        <ProjectReference Include="..\TrainingService.Domain\TrainingService.Domain.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="Ardalis.Result">
-        <HintPath>..\..\..\..\.nuget\packages\ardalis.result\10.1.0\lib\net8.0\Ardalis.Result.dll</HintPath>
-      </Reference>
-      <Reference Include="MediatR.Contracts">
-        <HintPath>..\..\..\..\.nuget\packages\mediatr.contracts\2.0.1\lib\netstandard2.0\MediatR.Contracts.dll</HintPath>
-      </Reference>
+        <Reference Include="Ardalis.Result">
+            <HintPath>..\..\..\..\.nuget\packages\ardalis.result\10.1.0\lib\net8.0\Ardalis.Result.dll</HintPath>
+        </Reference>
+        <Reference Include="MediatR.Contracts">
+            <HintPath>..\..\..\..\.nuget\packages\mediatr.contracts\2.0.1\lib\netstandard2.0\MediatR.Contracts.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="MediatR" Version="12.5.0" />
+        <PackageReference Include="Ardalis.Result" Version="10.1.0" />
+        <PackageReference Include="FluentValidation" Version="12.2.0" />
+        <PackageReference Include="MediatR" Version="12.5.0" />
     </ItemGroup>
 
 </Project>
