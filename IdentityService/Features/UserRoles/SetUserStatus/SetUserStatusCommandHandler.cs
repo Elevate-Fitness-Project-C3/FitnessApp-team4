@@ -1,6 +1,5 @@
 using IdentityService.Security.Authorization;
 using IdentityService.Security.Auditing;
-using IdentityService.Security.Tokens;
 
 namespace IdentityService.Features.UserRoles.SetUserStatus;
 
@@ -12,7 +11,7 @@ public sealed class SetUserStatusCommandHandler(AuthDbContext db, UserManager<Ap
 
     private async Task<Result<Success>> ApplyAsync(SetUserStatusCommand request, CancellationToken cancellationToken)
     {
-        await RefreshTokenSessionLock.AcquireAsync(db, request.UserId, cancellationToken);
+        await UserRowLock.AcquireAsync(db, request.UserId, cancellationToken);
         var user = await db.Users.SingleOrDefaultAsync(x => x.Id == request.UserId, cancellationToken);
         if (user is null) return SecurityMutationChecks.Missing;
         if (user.ConcurrencyStamp != request.ConcurrencyToken) return SecurityMutationChecks.Conflict;
@@ -29,7 +28,7 @@ public sealed class SetUserStatusCommandHandler(AuthDbContext db, UserManager<Ap
             await db.RefreshTokens.Where(x => x.UserId == user.Id && x.RevokedOn == null).ExecuteUpdateAsync(set => set.SetProperty(x => x.RevokedOn, now), cancellationToken);
         }
         if (!await checks.HasRecoveryAdministratorAsync(cancellationToken)) return SecurityMutationChecks.Recovery;
-        await audit.RecordAsync("Identity.UserStatusUpdated", "User", user.Id, SecurityAuditWriter.Values("isActive", old), SecurityAuditWriter.Values("isActive", user.IsActive), cancellationToken);
+        await audit.RecordAsync(AuditActions.UserStatusUpdated, "User", user.Id, SecurityAuditWriter.Values("isActive", old), SecurityAuditWriter.Values("isActive", user.IsActive), cancellationToken);
         return Result.Success;
     }
 }

@@ -20,6 +20,10 @@ public sealed class AuditReportQuery(AuditDbContext db, AuditCursorCodec cursors
         return db.AuditEvents.AsNoTracking().Where(Expression.Lambda<Func<AuditEvent, bool>>(predicate, parameter));
     }
 
+    public Task<bool> HasEventsAsync(AuditReadScope scope, CancellationToken cancellationToken)
+        => db.AuditEvents.AsNoTracking().AnyAsync(x => x.ApplicationId == scope.ApplicationId
+            && x.TenantId == scope.TenantId && x.SourceService == scope.SourceService, cancellationToken);
+
     public async Task<AuditEventPageDto?> SearchAsync(AuditAccess access, AuditEventSearchRequest request, CancellationToken cancellationToken)
     {
         if (request.FromUtc == default || request.FromUtc.Offset != TimeSpan.Zero || request.ToUtc.Offset != TimeSpan.Zero

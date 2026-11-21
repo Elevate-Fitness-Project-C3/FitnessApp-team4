@@ -49,5 +49,6 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
         builder.HasIndex(x => new { x.ApplicationId, x.TenantId, x.ActorUserId, x.TimestampUtc, x.Id }).IsDescending(false, false, false, true, true).HasDatabaseName("IX_AuditEvents_Scope_Actor_Time");
         builder.HasIndex(x => new { x.ApplicationId, x.TenantId, x.EntityType, x.EntityId, x.TimestampUtc, x.Id }).IsDescending(false, false, false, false, true, true).HasDatabaseName("IX_AuditEvents_Scope_Entity_Time");
         builder.HasIndex(x => new { x.ApplicationId, x.TenantId, x.CorrelationId, x.Id }).HasDatabaseName("IX_AuditEvents_Scope_Correlation");
+        builder.HasIndex(x => new { x.ApplicationId, x.TenantId, x.IngestedAtUtc, x.Id }).IsDescending(false, false, true, true).HasDatabaseName("IX_AuditEvents_Scope_Ingested");
     }
 }

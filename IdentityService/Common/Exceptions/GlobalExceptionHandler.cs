@@ -34,7 +34,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             await httpContext.Response.WriteAsJsonAsync(ApiResponse<object>.Fail(conflict ? "The resource changed. Reload before retrying." : "The database operation is temporarily unavailable.", httpContext.Response.StatusCode), cancellationToken);
             return true;
         }
-        logger.LogError("Unhandled exception occurred. Type={ExceptionType} TraceId={TraceId}", exception.GetType().Name, httpContext.TraceIdentifier);
+        logger.LogError(exception, "Unhandled exception occurred. TraceId={TraceId}", httpContext.TraceIdentifier);
         var response = ApiResponse<object>.Fail(message: "An unexpected error occurred.", statusCode:
                                         StatusCodes.Status500InternalServerError);
         httpContext.Response.StatusCode = response.StatusCode;

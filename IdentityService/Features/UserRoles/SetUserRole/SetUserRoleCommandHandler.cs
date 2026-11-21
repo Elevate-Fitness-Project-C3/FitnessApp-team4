@@ -1,6 +1,5 @@
 using IdentityService.Security.Authorization;
 using IdentityService.Security.Auditing;
-using IdentityService.Security.Tokens;
 
 namespace IdentityService.Features.UserRoles.SetUserRole;
 
@@ -22,7 +21,7 @@ public sealed class SetUserRoleCommandHandler(AuthDbContext db, UserManager<Appl
 
     private async Task<Result<ApplicationUser>> ApplyAsync(SetUserRoleCommand request, CancellationToken cancellationToken)
     {
-        await RefreshTokenSessionLock.AcquireAsync(db, request.UserId, cancellationToken);
+        await UserRowLock.AcquireAsync(db, request.UserId, cancellationToken);
         var user = await db.Users.SingleOrDefaultAsync(x => x.Id == request.UserId, cancellationToken);
         var role = await db.Roles.SingleOrDefaultAsync(x => x.Id == request.RoleId, cancellationToken);
         if (user is null || role is null) return SecurityMutationChecks.Missing;
@@ -34,7 +33,7 @@ public sealed class SetUserRoleCommandHandler(AuthDbContext db, UserManager<Appl
             var result = request.Assign ? await users.AddToRoleAsync(user, role.Name!) : await users.RemoveFromRoleAsync(user, role.Name!);
             if (!result.Succeeded) return IdentityErrorMapper.ToResult<ApplicationUser>(result);
             if (!await checks.HasRecoveryAdministratorAsync(cancellationToken)) return SecurityMutationChecks.Recovery;
-            await audit.RecordAsync(request.Assign ? "Identity.RoleAssigned" : "Identity.RoleRemoved", "User", user.Id,
+            await audit.RecordAsync(request.Assign ? AuditActions.RoleAssigned : AuditActions.RoleRemoved, "User", user.Id,
                 request.Assign ? null : SecurityAuditWriter.Values("roleId", role.Id),
                 request.Assign ? SecurityAuditWriter.Values("roleId", role.Id) : null, cancellationToken);
         }

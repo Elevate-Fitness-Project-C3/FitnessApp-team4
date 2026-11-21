@@ -64,6 +64,10 @@ builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 
+if (!app.Environment.IsDevelopment() && !app.Configuration.GetSection("Proxy:KnownProxies").GetChildren().Any())
+    app.Logger.LogWarning(
+        "Proxy:KnownProxies is empty. Behind a reverse proxy, per-IP rate limiting and audit IP addresses use the proxy address.");
+
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 
@@ -135,6 +139,21 @@ app.MapHealthChecks(
             [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] =
                 StatusCodes.Status503ServiceUnavailable
         }
+    });
+
+app.MapHealthChecks(
+    "/health/live",
+    new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        Predicate = _ => false
+    });
+
+app.MapHealthChecks(
+    "/health/ready",
+    new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        Predicate = registration =>
+            registration.Tags.Contains("ready")
     });
 
 app.Run();

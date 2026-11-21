@@ -29,7 +29,7 @@ public sealed class UpdateRolePermissionsCommandHandler(AuthDbContext db, Securi
         role.ConcurrencyStamp = Guid.NewGuid().ToString();
         await db.SaveChangesAsync(cancellationToken);
         if (!await checks.HasRecoveryAdministratorAsync(cancellationToken)) return SecurityMutationChecks.Recovery;
-        await audit.RecordAsync("Identity.RolePermissionsUpdated", "Role", role.Id,
+        await audit.RecordAsync(AuditActions.RolePermissionsUpdated, "Role", role.Id,
             SecurityAuditWriter.Values("permissionCodes", old.Except(next).Order(StringComparer.Ordinal).ToArray()),
             SecurityAuditWriter.Values("permissionCodes", next.Except(old).Order(StringComparer.Ordinal).ToArray()), cancellationToken);
         return Result<RoleDto>.Success(new(role.Id, role.Name!, role.ConcurrencyStamp!, next.Order(StringComparer.Ordinal).ToArray()));

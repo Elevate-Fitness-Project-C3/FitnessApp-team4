@@ -19,7 +19,7 @@ public sealed class AuditEventIngestor(AuditDbContext db)
         var resource = "audit:" + Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value.SourceService + ":" + value.EventId.ToString("D"))));
         await db.Database.ExecuteSqlInterpolatedAsync($"""
             DECLARE @result int;
-            EXEC @result = sys.sp_getapplock @Resource={resource}, @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=10000;
+            EXEC @result = sys.sp_getapplock @Resource={resource}, @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=4000;
             IF @result < 0 THROW 51001, 'Audit event lock could not be acquired.', 1;
             """, cancellationToken);
         var receipt = await db.AuditEventReceipts.AsNoTracking().SingleOrDefaultAsync(x => x.SourceService == value.SourceService && x.EventId == value.EventId, cancellationToken);

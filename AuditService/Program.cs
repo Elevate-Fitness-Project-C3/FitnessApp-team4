@@ -20,6 +20,7 @@ builder.Services.AddHttpClient<AuditService.Features.AuditEvents.Reports.AuditRe
     .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false });
 builder.Services.AddSingleton<AuditService.Features.AuditEvents.Reports.AuditCursorCodec>();
 builder.Services.AddScoped<AuditService.Features.AuditEvents.Reports.AuditReportQuery>();
+builder.Services.AddScoped<AuditService.Features.AuditEvents.Reports.AuditReportAccessFilter>();
 var connection = AuditDatabaseConfiguration.GetConnectionString(builder.Configuration);
 builder.Services.AddDbContext<AuditDbContext>(options => options
     .UseSqlServer(connection, sql => sql.CommandTimeout(5))
@@ -33,10 +34,22 @@ var app = builder.Build();
 app.UseExceptionHandler(handler => handler.Run(async context =>
 {
     var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
-    context.Response.StatusCode = exception is Microsoft.Data.SqlClient.SqlException or DbUpdateException ? 503 : 500;
-    var sql = exception as Microsoft.Data.SqlClient.SqlException ?? exception?.InnerException as Microsoft.Data.SqlClient.SqlException;
-    app.Logger.LogError("Audit request failed. TraceId={TraceId} ExceptionType={ExceptionType} SqlError={SqlError}",
-        System.Diagnostics.Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier, exception?.GetType().Name, sql?.Number);
+    if (exception is OperationCanceledException && context.RequestAborted.IsCancellationRequested)
+    {
+        context.Response.StatusCode = StatusCodes.Status499ClientClosedRequest;
+        return;
+    }
+    var traceId = System.Diagnostics.Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
+    var persistence = exception is Microsoft.Data.SqlClient.SqlException or DbUpdateException;
+    context.Response.StatusCode = persistence ? 503 : 500;
+    if (persistence)
+    {
+        var sql = exception as Microsoft.Data.SqlClient.SqlException ?? exception!.InnerException as Microsoft.Data.SqlClient.SqlException;
+        app.Logger.LogError("Audit request failed. TraceId={TraceId} ExceptionType={ExceptionType} SqlError={SqlError}",
+            traceId, exception!.GetType().Name, sql?.Number);
+    }
+    else
+        app.Logger.LogError(exception, "Audit request failed. TraceId={TraceId}", traceId);
     await context.Response.WriteAsJsonAsync(new { Success = false, StatusCode = context.Response.StatusCode, Message = "The audit operation is temporarily unavailable." });
 }));
 app.MapControllers();

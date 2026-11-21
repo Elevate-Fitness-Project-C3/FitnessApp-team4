@@ -33,7 +33,7 @@ public sealed class SetAuditGrantCommandHandler(AuthDbContext db, AuditActorCont
             ["tenantId"] = JsonSerializer.SerializeToElement(request.TenantId),
             ["sourceService"] = JsonSerializer.SerializeToElement(request.SourceService)
         };
-        await audit.RecordAsync(request.Remove ? "Identity.AuditGrantRemoved" : "Identity.AuditGrantCreated", "AuditReportGrant", grant!.Id.ToString("D"), request.Remove ? values : null, request.Remove ? null : values, cancellationToken);
+        await audit.RecordAsync(request.Remove ? AuditActions.AuditGrantRemoved : AuditActions.AuditGrantCreated, "AuditReportGrant", grant!.Id.ToString("D"), request.Remove ? values : null, request.Remove ? null : values, cancellationToken);
         return Result.Success;
     }
 }
