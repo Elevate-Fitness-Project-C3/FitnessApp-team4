@@ -85,6 +85,11 @@ public sealed class AuthEmailWorker(
                 logger.LogWarning("Outbox processing canceled after timeout or lease loss. MessageId={MessageId}", message.Id);
                 await RetryLaterAsync(db, message, leaseToken, cancellationToken);
             }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogError(ex, "Outbox message failed unexpectedly. MessageId={MessageId}", message.Id);
+                await RetryLaterAsync(db, message, leaseToken, cancellationToken);
+            }
             handled++;
         }
 

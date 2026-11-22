@@ -318,8 +318,15 @@ namespace IdentityService.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ExpiresOn")
+                        .HasDatabaseName("IX_RefreshTokens_ExpiresOn");
+
                     b.HasIndex("TokenHash")
                         .IsUnique();
+
+                    b.HasIndex("UserId", "ExpiresOn")
+                        .HasDatabaseName("IX_RefreshTokens_Active")
+                        .HasFilter("[RevokedOn] IS NULL");
 
                     b.HasIndex("UserId", "SessionId");
 

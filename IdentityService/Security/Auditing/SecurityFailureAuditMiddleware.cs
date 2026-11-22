@@ -15,10 +15,9 @@ public sealed class SecurityFailureAuditMiddleware(RequestDelegate next, IServic
         catch { failed = true; throw; }
         finally
         {
-            if (administrative && (failed || context.Response.StatusCode >= 400)
-                && !context.Items.ContainsKey(AuditActorContext.CommittedMutationKey))
+            if (administrative && ShouldRecord(context, failed))
             {
-                var denied = !failed && context.Response.StatusCode is 401 or 403;
+                var denied = !failed && context.Response.StatusCode == StatusCodes.Status403Forbidden;
                 try
                 {
                     using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -26,7 +25,7 @@ public sealed class SecurityFailureAuditMiddleware(RequestDelegate next, IServic
                     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
                     await using var transaction = await db.Database.BeginTransactionAsync(deadline.Token);
                     await scope.ServiceProvider.GetRequiredService<SecurityAuditWriter>().RecordAsync(
-                        denied ? "Identity.SecurityOperationDenied" : "Identity.SecurityOperationFailed", "SecurityOperation", null,
+                        denied ? AuditActions.SecurityOperationDenied : AuditActions.SecurityOperationFailed, "SecurityOperation", null,
                         null, null, deadline.Token, denied ? AuditOperationStatus.Denied : AuditOperationStatus.Failed);
                     await transaction.CommitAsync(deadline.Token);
                 }
@@ -41,5 +40,14 @@ public sealed class SecurityFailureAuditMiddleware(RequestDelegate next, IServic
                 }
             }
         }
+    }
+
+    private static bool ShouldRecord(HttpContext context, bool failed)
+    {
+        if (context.Items.ContainsKey(AuditActorContext.CommittedMutationKey) || context.User.Identity?.IsAuthenticated != true)
+            return false;
+        var status = context.Response.StatusCode;
+        var mutating = !HttpMethods.IsGet(context.Request.Method) && !HttpMethods.IsHead(context.Request.Method);
+        return (failed || status >= StatusCodes.Status400BadRequest) && (mutating || status == StatusCodes.Status403Forbidden);
     }
 }
