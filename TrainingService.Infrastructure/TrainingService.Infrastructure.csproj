@@ -12,6 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\TrainingService.Application\TrainingService.Application.csproj" />
       <ProjectReference Include="..\TrainingService.Domain\TrainingService.Domain.csproj" />
     </ItemGroup>
 
