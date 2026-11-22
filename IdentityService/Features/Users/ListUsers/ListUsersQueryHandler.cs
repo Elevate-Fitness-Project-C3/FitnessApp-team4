@@ -3,9 +3,10 @@ using IdentityService.Common.Extensions;
 namespace IdentityService.Features.Users.ListUsers;
 
 internal sealed class ListUsersQueryHandler(AuthDbContext db)
-    : IRequestHandler<ListUsersQuery, PaginatedResult<UserDto>>
+    : IRequestHandler<ListUsersQuery, Result<PaginatedResult<UserDto>>>
 {
-    public async Task<PaginatedResult<UserDto>> Handle(ListUsersQuery request, CancellationToken cancellationToken)
+    public async Task<Result<PaginatedResult<UserDto>>> Handle(ListUsersQuery request,
+        CancellationToken cancellationToken)
     {
         var query = db.Users.AsNoTracking();
 

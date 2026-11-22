@@ -11,4 +11,4 @@ public sealed record ListUsersQuery(
     bool? EmailConfirmed = null,
     UserSortBy SortBy = UserSortBy.CreatedAt,
     SortDirection SortDirection = SortDirection.Desc
-) : IRequest<PaginatedResult<UserDto>>;
+) : IRequest<Result<PaginatedResult<UserDto>>>;
