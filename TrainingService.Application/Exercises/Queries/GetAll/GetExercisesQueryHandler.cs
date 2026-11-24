@@ -1,4 +1,5 @@
 using Ardalis.Result;
+using Microsoft.EntityFrameworkCore;
 using MediatR;
 using TrainingService.Application.Common.Interfaces;
 using TrainingService.Application.Exercises.Dtos;
@@ -21,10 +22,8 @@ public class GetExercisesQueryHandler
         GetExercisesQuery request,
         CancellationToken cancellationToken)
     {
-        var exercises = await _repository.GetAllAsync();
-
-        var response = exercises
-            .Where(exercise => !exercise.IsDeleted)
+        var response = await _repository
+            .Get(exercise => !exercise.IsDeleted)
             .Select(exercise => new ExerciseDto(
                 exercise.Id,
                 exercise.Name,
@@ -36,7 +35,7 @@ public class GetExercisesQueryHandler
                 exercise.CreatedAt,
                 exercise.UpdatedAt
             ))
-            .ToList();
+            .ToListAsync(cancellationToken);
 
         return Result<IReadOnlyList<ExerciseDto>>.Success(response);
     }

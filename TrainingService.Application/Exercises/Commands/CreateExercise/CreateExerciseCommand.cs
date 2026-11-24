@@ -1,6 +1,5 @@
 using Ardalis.Result;
 using MediatR;
-using TrainingService.Application.Exercises.Dtos;
 using TrainingService.Domain.Exercises.Enums;
 
 namespace TrainingService.Application.Exercises.Commands.CreateExercise;
@@ -12,4 +11,4 @@ public record CreateExerciseCommand(
     string TargetMuscleGroup,
     ExerciseTrackingType TrackingType,
     bool IsActive = true
-) : IRequest<Result<ExerciseDto>>;
+) : IRequest<Result<Guid>>;

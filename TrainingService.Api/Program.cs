@@ -1,9 +1,18 @@
+using FluentValidation;
 using TrainingService.Api.Endpoints;
 using TrainingService.Application;
+using TrainingService.Application.Exercises.Commands.CreateExercise;
 using TrainingService.Infrastructure;
 using TrainingService.Application.Programs.Commands.CreateProgram;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(
+        typeof(CreateExerciseCommand).Assembly));
+
+builder.Services.AddValidatorsFromAssembly(
+    typeof(CreateExerciseCommand).Assembly);
 
 builder.Services.AddMediatR(cfg =>
     cfg.RegisterServicesFromAssembly(
