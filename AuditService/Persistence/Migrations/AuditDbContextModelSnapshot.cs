@@ -135,6 +135,10 @@ namespace AuditService.Persistence.Migrations
                     b.HasIndex("ApplicationId", "TenantId", "CorrelationId", "Id")
                         .HasDatabaseName("IX_AuditEvents_Scope_Correlation");
 
+                    b.HasIndex("ApplicationId", "TenantId", "IngestedAtUtc", "Id")
+                        .IsDescending(false, false, true, true)
+                        .HasDatabaseName("IX_AuditEvents_Scope_Ingested");
+
                     b.HasIndex("ApplicationId", "TenantId", "TimestampUtc", "Id")
                         .IsDescending(false, false, true, true)
                         .HasDatabaseName("IX_AuditEvents_Scope_Time");

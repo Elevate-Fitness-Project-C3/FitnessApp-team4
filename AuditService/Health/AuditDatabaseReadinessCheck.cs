@@ -6,16 +6,22 @@ namespace AuditService.Health;
 
 public sealed class AuditDatabaseReadinessCheck(AuditDbContext db) : IHealthCheck
 {
+    private static volatile bool schemaVerified;
+
     public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
             if (!await db.Database.CanConnectAsync(cancellationToken))
                 return HealthCheckResult.Unhealthy("Audit database is unavailable.");
-            if (db.Database.HasPendingModelChanges())
-                return HealthCheckResult.Unhealthy("Audit database model requires a migration.");
-            if ((await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
-                return HealthCheckResult.Unhealthy("Audit database migrations must be applied by deployment.");
+            if (!schemaVerified)
+            {
+                if (db.Database.HasPendingModelChanges())
+                    return HealthCheckResult.Unhealthy("Audit database model requires a migration.");
+                if ((await db.Database.GetPendingMigrationsAsync(cancellationToken)).Any())
+                    return HealthCheckResult.Unhealthy("Audit database migrations must be applied by deployment.");
+                schemaVerified = true;
+            }
             return HealthCheckResult.Healthy();
         }
         catch (Exception)

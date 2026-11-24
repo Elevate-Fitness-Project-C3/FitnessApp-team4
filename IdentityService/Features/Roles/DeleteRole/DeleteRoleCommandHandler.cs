@@ -19,7 +19,7 @@ public sealed class DeleteRoleCommandHandler(AuthDbContext db, RoleManager<Ident
             return Error.Conflict("Role.Assigned", "Remove role assignments before deleting the role.");
         var result = await roles.DeleteAsync(role);
         if (!result.Succeeded) return IdentityErrorMapper.ToResult<Success>(result);
-        await audit.RecordAsync("Identity.RoleDeleted", "Role", role.Id, SecurityAuditWriter.Values("name", role.Name), null, cancellationToken);
+        await audit.RecordAsync(AuditActions.RoleDeleted, "Role", role.Id, SecurityAuditWriter.Values("name", role.Name), null, cancellationToken);
         return Result.Success;
     }
 }

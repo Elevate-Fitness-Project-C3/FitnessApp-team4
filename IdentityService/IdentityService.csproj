@@ -26,4 +26,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Email/Templates/*.html" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="IdentityService.Tests" />
+  </ItemGroup>
 </Project>

@@ -79,7 +79,7 @@ services:
   training-service:
     build:
       context: .
-      dockerfile: TrainingService/Dockerfile
+      dockerfile: TrainingService.Api/Dockerfile
     environment:
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__DefaultConnection: "${TRAINING_CONNECTION_STRING:-}"
@@ -95,6 +95,7 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_PID: Developer
       MSSQL_SA_PASSWORD: ${SQL_SA_PASSWORD:?Set SQL_SA_PASSWORD in .env}
+  
     volumes:
       - fitness-sql-data:/var/opt/mssql
     healthcheck:

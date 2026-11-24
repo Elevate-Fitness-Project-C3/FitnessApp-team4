@@ -27,6 +27,8 @@ public static class AuditEventValidation
         ["Identity.SecurityOperationFailed"] = ("SecurityOperation", [])
     };
 
+    internal static IEnumerable<string> IdentityActionNames => IdentityActions.Keys;
+
     internal static bool ValidProfile(AuditSourceOptions source) =>
         ValidIdentifier(source.ApplicationId, 100)
         && source.TenantIds.All(tenant => ValidText(tenant, 128, true))

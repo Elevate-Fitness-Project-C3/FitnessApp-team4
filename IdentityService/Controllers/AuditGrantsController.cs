@@ -1,11 +1,13 @@
+using IdentityService.Common;
 using IdentityService.Common.Responses;
 using IdentityService.Features.AuditGrants.SetAuditGrant;
 using IdentityService.Security.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace IdentityService.Features.AuditGrants;
 
-[ApiController, Route("api/audit-grants"), HasPermission("Identity.AuditGrants.Manage")]
+[ApiController, EnableRateLimiting(RateLimitPolicies.Admin), Route("api/audit-grants"), HasPermission("Identity.AuditGrants.Manage")]
 public sealed class AuditGrantsController(ISender sender) : ControllerBase
 {
     [HttpPut]

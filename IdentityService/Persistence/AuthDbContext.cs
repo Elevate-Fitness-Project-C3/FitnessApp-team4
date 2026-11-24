@@ -28,6 +28,9 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, st
             entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.SessionId });
+            entity.HasIndex(x => new { x.UserId, x.ExpiresOn }).HasFilter("[RevokedOn] IS NULL")
+                  .HasDatabaseName(DbIndexes.RefreshTokensActive);
+            entity.HasIndex(x => x.ExpiresOn).HasDatabaseName(DbIndexes.RefreshTokensExpiresOn);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId);
         });
         builder.Entity<EmailOutboxMessage>(entity =>
@@ -84,7 +87,9 @@ public class AuthDbContext : IdentityDbContext<ApplicationUser, IdentityRole, st
             if (entry.Entity is not (ApplicationUser or IdentityRole or Permission or PermissionGroup)) continue;
             if (entry.State == EntityState.Added)
             {
-                entry.Property("CreatedBy").CurrentValue = actor is null ? "system:identity" : actor.EntityActorId;
+                entry.Property("CreatedBy").CurrentValue = actor is null
+                    ? "system:identity"
+                    : actor.EntityActorId ?? (entry.Entity as ApplicationUser)?.Id ?? "anonymous";
                 entry.Property("CreatedAt").CurrentValue = DateTimeOffset.UtcNow;
                 entry.Property("LastModifiedBy").CurrentValue = null;
                 entry.Property("LastModifiedAt").CurrentValue = null;

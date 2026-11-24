@@ -22,7 +22,7 @@ public sealed class RenameRoleCommandHandler(RoleManager<IdentityRole> roles, Se
         if (!result.Succeeded) return IdentityErrorMapper.ToResult<RoleDto>(result);
         result = await roles.UpdateAsync(role);
         if (!result.Succeeded) return IdentityErrorMapper.ToResult<RoleDto>(result);
-        await audit.RecordAsync("Identity.RoleRenamed", "Role", role.Id, SecurityAuditWriter.Values("name", oldName), SecurityAuditWriter.Values("name", role.Name), cancellationToken);
+        await audit.RecordAsync(AuditActions.RoleRenamed, "Role", role.Id, SecurityAuditWriter.Values("name", oldName), SecurityAuditWriter.Values("name", role.Name), cancellationToken);
         return Result<RoleDto>.Success(new(role.Id, role.Name!, role.ConcurrencyStamp!, grants));
     }
 }
