@@ -9,7 +9,9 @@ public static class ResultExtensions
     {
         if (result.IsSuccess)
         {
-            var response = ApiResponse<T>.Success(result.Value);
+            var response = ApiResponse<T>.Success(
+                result.Value,
+                string.IsNullOrWhiteSpace(result.SuccessMessage) ? null : result.SuccessMessage);
 
             var statusCode = result.Status == ResultStatus.Created
                 ? StatusCodes.Status201Created

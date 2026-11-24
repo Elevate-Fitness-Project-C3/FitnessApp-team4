@@ -5,7 +5,6 @@ namespace TrainingService.Domain.Programs;
 
 public class Program :BaseEntity
 {
-
     public ProgramGoal Goal { get; private set; }
     public ProgramLevel Level { get; private set; }
 
@@ -19,6 +18,16 @@ public class Program :BaseEntity
     
     public ICollection<ProgramWorkout> WorkoutSlots { get; private set; }=new List<ProgramWorkout>();
     
+    public Program(ProgramGoal goal, ProgramLevel level, int durationWeeks, int daysPerWeek, AccessTier accessTier, string description)
+    {
+        Goal = goal;
+        Level = level;
+        DurationWeeks = durationWeeks;
+        DaysPerWeek = daysPerWeek;
+        AccessTier = accessTier;
+        Description = description;
+        ProgramStatus status = ProgramStatus.Draft;
+    }
     public void AddWorkoutSlot(
         Guid workoutId,
         int weekNumber,
@@ -48,5 +57,22 @@ public class Program :BaseEntity
                 dayNumber,
                 weekNumber));
     }
+
+    public void Publish()
+    {
+        if (Status == ProgramStatus.Published)
+            throw new InvalidOperationException("Program is already published.");
+
+        Status = ProgramStatus.Published;
+    }
+
+    public void Archive()
+    {
+        if (Status == ProgramStatus.Archived)
+            throw new InvalidOperationException("Program is already archived.");
+
+        Status = ProgramStatus.Archived;
+    }
+
     
 }
