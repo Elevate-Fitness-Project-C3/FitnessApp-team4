@@ -1,5 +1,4 @@
 using Ardalis.Result;
-using FluentValidation;
 using MediatR;
 using TrainingService.Application.Common.Interfaces;
 using TrainingService.Application.Exercises.Dtos;
@@ -12,36 +11,19 @@ public class CreateExerciseCommandHandler
 {
     private readonly IGenericRepository<Exercise> _repository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IValidator<CreateExerciseCommand> _validator;
 
     public CreateExerciseCommandHandler(
         IGenericRepository<Exercise> repository,
-        IUnitOfWork unitOfWork,
-        IValidator<CreateExerciseCommand> validator)
+        IUnitOfWork unitOfWork)
     {
         _repository = repository;
         _unitOfWork = unitOfWork;
-        _validator = validator;
     }
 
     public async Task<Result<ExerciseDto>> Handle(
         CreateExerciseCommand request,
         CancellationToken cancellationToken)
     {
-        var validationResult = await _validator.ValidateAsync(
-            request,
-            cancellationToken);
-
-        if (!validationResult.IsValid)
-        {
-            return Result<ExerciseDto>.Invalid(
-                validationResult.Errors
-                    .Select(error => new ValidationError(
-                        error.PropertyName,
-                        error.ErrorMessage))
-                    .ToArray());
-        }
-
         var exercise = new Exercise
         {
             Id = Guid.NewGuid(),
