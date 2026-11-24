@@ -4,7 +4,7 @@ namespace TrainingService.Application.Common.Interfaces;
 
 public interface IGenericRepository<T> where T : BaseEntity
 {
-    Task<T?> GetByIdAsync(Guid id);
+    Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<T>> GetAllAsync();
 

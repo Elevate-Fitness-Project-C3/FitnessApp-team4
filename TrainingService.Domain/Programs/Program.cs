@@ -57,5 +57,14 @@ public class Program :BaseEntity
                 dayNumber,
                 weekNumber));
     }
+
+    public void Publish()
+    {
+        if (Status == ProgramStatus.Published)
+            throw new InvalidOperationException("Program is already published.");
+
+        Status = ProgramStatus.Published;
+    }
+
     
 }
