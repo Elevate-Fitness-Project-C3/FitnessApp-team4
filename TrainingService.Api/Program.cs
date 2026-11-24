@@ -1,9 +1,13 @@
 using TrainingService.Api.Endpoints;
 using TrainingService.Application;
 using TrainingService.Infrastructure;
+using TrainingService.Application.Programs.Commands.CreateProgram;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(
+        typeof(CreateProgramCommand).Assembly));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);

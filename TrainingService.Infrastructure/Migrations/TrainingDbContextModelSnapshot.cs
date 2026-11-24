@@ -74,6 +74,92 @@ namespace TrainingService.Infrastructure.Migrations
                     b.ToTable("Exercises", (string)null);
                 });
 
+            modelBuilder.Entity("TrainingService.Domain.Programs.Program", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccessTier")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DaysPerWeek")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DurationWeeks")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Goal")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Programs");
+                });
+
+            modelBuilder.Entity("TrainingService.Domain.Programs.ProgramWorkout", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DayNumber")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("WeekNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("WorkoutId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkoutId");
+
+                    b.HasIndex("ProgramId", "WeekNumber", "DayNumber")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ProgramWorkout_Program_Week_Day");
+
+                    b.ToTable("ProgramWorkouts");
+                });
+
             modelBuilder.Entity("TrainingService.Domain.Workouts.Workout", b =>
                 {
                     b.Property<Guid>("Id")
@@ -158,6 +244,25 @@ namespace TrainingService.Infrastructure.Migrations
                     b.ToTable("WorkoutExercises", (string)null);
                 });
 
+            modelBuilder.Entity("TrainingService.Domain.Programs.ProgramWorkout", b =>
+                {
+                    b.HasOne("TrainingService.Domain.Programs.Program", "Program")
+                        .WithMany("WorkoutSlots")
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TrainingService.Domain.Workouts.Workout", "Workout")
+                        .WithMany()
+                        .HasForeignKey("WorkoutId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Program");
+
+                    b.Navigation("Workout");
+                });
+
             modelBuilder.Entity("TrainingService.Domain.Workouts.WorkoutExercise", b =>
                 {
                     b.HasOne("TrainingService.Domain.Exercises.Exercise", "Exercise")
@@ -175,6 +280,11 @@ namespace TrainingService.Infrastructure.Migrations
                     b.Navigation("Exercise");
 
                     b.Navigation("Workout");
+                });
+
+            modelBuilder.Entity("TrainingService.Domain.Programs.Program", b =>
+                {
+                    b.Navigation("WorkoutSlots");
                 });
 
             modelBuilder.Entity("TrainingService.Domain.Workouts.Workout", b =>
