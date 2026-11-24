@@ -66,5 +66,13 @@ public class Program :BaseEntity
         Status = ProgramStatus.Published;
     }
 
+    public void Archive()
+    {
+        if (Status == ProgramStatus.Archived)
+            throw new InvalidOperationException("Program is already archived.");
+
+        Status = ProgramStatus.Archived;
+    }
+
     
 }
