@@ -1,20 +1,25 @@
 ﻿using TrainingService.Infrastructure;
+using TrainingService.Application.Programs.Commands.CreateProgram;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register services
-builder.Services.AddOpenApi();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(
+        typeof(CreateProgramCommand).Assembly));
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
-// Configure HTTP pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.MapGet("/health", () => "Training API is running");
 
-app.UseHttpsRedirection();
+app.UseSwagger();
+app.UseSwaggerUI();
+
+app.MapControllers();
 
 app.Run();
