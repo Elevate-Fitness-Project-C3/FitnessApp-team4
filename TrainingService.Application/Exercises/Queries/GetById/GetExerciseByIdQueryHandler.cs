@@ -1,5 +1,6 @@
 using Ardalis.Result;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using TrainingService.Application.Common.Interfaces;
 using TrainingService.Application.Exercises.Dtos;
 using TrainingService.Domain.Exercises;
@@ -21,24 +22,27 @@ public class GetExerciseByIdQueryHandler
         GetExerciseByIdQuery request,
         CancellationToken cancellationToken)
     {
-        var exercise = await _repository.GetByIdAsync(request.Id);
+        var response = await _repository
+            .Get(exercise =>
+                exercise.Id == request.Id &&
+                !exercise.IsDeleted)
+            .Select(exercise => new ExerciseDto(
+                exercise.Id,
+                exercise.Name,
+                exercise.Description,
+                exercise.Instructions,
+                exercise.TargetMuscleGroup,
+                exercise.TrackingType,
+                exercise.IsActive,
+                exercise.CreatedAt,
+                exercise.UpdatedAt
+            ))
+            .FirstOrDefaultAsync(cancellationToken);
 
-        if (exercise is null || exercise.IsDeleted)
+        if (response is null)
         {
             return Result<ExerciseDto>.NotFound("Exercise not found.");
         }
-
-        var response = new ExerciseDto(
-            exercise.Id,
-            exercise.Name,
-            exercise.Description,
-            exercise.Instructions,
-            exercise.TargetMuscleGroup,
-            exercise.TrackingType,
-            exercise.IsActive,
-            exercise.CreatedAt,
-            exercise.UpdatedAt
-        );
 
         return Result<ExerciseDto>.Success(response);
     }

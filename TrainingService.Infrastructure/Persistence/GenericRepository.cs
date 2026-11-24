@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using TrainingService.Application.Common.Interfaces;
 using TrainingService.Domain.Common;
@@ -13,6 +14,11 @@ public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
     {
         Context = context;
         DbSet = context.Set<T>();
+    }
+    
+    public IQueryable<T> Get(Expression<Func<T, bool>> predicate)
+    {
+        return DbSet.Where(predicate);
     }
 
     public async Task<T?> GetByIdAsync(Guid id)

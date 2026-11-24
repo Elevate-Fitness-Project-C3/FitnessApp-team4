@@ -1,13 +1,12 @@
 using Ardalis.Result;
 using MediatR;
 using TrainingService.Application.Common.Interfaces;
-using TrainingService.Application.Exercises.Dtos;
 using TrainingService.Domain.Exercises;
 
 namespace TrainingService.Application.Exercises.Commands.UpdateExercise;
 
 public class UpdateExerciseCommandHandler
-    : IRequestHandler<UpdateExerciseCommand, Result<ExerciseDto>>
+    : IRequestHandler<UpdateExerciseCommand, Result>
 {
     private readonly IGenericRepository<Exercise> _repository;
     private readonly IUnitOfWork _unitOfWork;
@@ -20,7 +19,7 @@ public class UpdateExerciseCommandHandler
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<Result<ExerciseDto>> Handle(
+    public async Task<Result> Handle(
         UpdateExerciseCommand request,
         CancellationToken cancellationToken)
     {
@@ -28,7 +27,7 @@ public class UpdateExerciseCommandHandler
 
         if (exercise is null || exercise.IsDeleted)
         {
-            return Result<ExerciseDto>.NotFound("Exercise not found.");
+            return Result.NotFound("Exercise not found.");
         }
 
         exercise.Name = request.Name.Trim();
@@ -43,18 +42,6 @@ public class UpdateExerciseCommandHandler
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var response = new ExerciseDto(
-            exercise.Id,
-            exercise.Name,
-            exercise.Description,
-            exercise.Instructions,
-            exercise.TargetMuscleGroup,
-            exercise.TrackingType,
-            exercise.IsActive,
-            exercise.CreatedAt,
-            exercise.UpdatedAt
-        );
-
-        return Result<ExerciseDto>.Success(response);
+        return Result.Success();
     }
 }
