@@ -21,9 +21,9 @@ public class GenericRepository<T> : IGenericRepository<T> where T : BaseEntity
         return DbSet.Where(predicate);
     }
 
-    public async Task<T?> GetByIdAsync(Guid id)
+    public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await DbSet.FindAsync(id);
+        return await DbSet.FindAsync([id], cancellationToken);
     }
 
     public async Task<IReadOnlyList<T>> GetAllAsync()
