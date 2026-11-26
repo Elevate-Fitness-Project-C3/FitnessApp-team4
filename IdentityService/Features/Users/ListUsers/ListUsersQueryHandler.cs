@@ -48,7 +48,7 @@ internal sealed class ListUsersQueryHandler(AuthDbContext db)
 
         return await orderedQuery.ThenBy(x => x.Id)
             .Select(x => new UserDto(x.Id, x.FirstName, x.LastName, x.Email, x.EmailConfirmed, x.PhoneNumber,
-                x.IsActive, x.CreatedAt))
+                x.IsActive, x.CreatedAt, x.ConcurrencyStamp!))
             .ToPaginatedResultAsync(request.PageIndex, request.PageSize, cancellationToken);
     }
 }
