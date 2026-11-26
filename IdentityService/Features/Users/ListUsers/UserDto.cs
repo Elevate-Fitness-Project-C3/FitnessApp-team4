@@ -8,5 +8,6 @@ namespace IdentityService.Features.Users.ListUsers
         bool EmailConfirmed,
         string? PhoneNumber,
         bool IsActive,
-        DateTimeOffset CreatedAt);
+        DateTimeOffset CreatedAt,
+        string ConcurrencyToken);
 }

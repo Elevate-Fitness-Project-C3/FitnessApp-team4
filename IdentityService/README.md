@@ -163,3 +163,12 @@ the Identity container with `up -d --force-recreate identity-service` if it has 
   instances the signal only wakes the instance that handled the request (others pick messages up on the next poll).
 
 In the operations scripts, set `@MaxAttempts` to your configured `EmailOutbox:MaxDeliveryAttempts` if it differs from 4.
+
+### Profile updates
+
+- `GET /api/users/me`: authenticated user's details, including `concurrencyToken`.
+- `PUT /api/users/me/profile`: authenticated user's own profile; target comes from `sub`.
+- `PUT /api/users/{userId}/profile`: requires `Identity.Users.Profile.Update`, target role management checks and configured audit messaging.
+- Both PUT requests accept `firstName`, `lastName`, `phoneNumber` (nullable, digits with optional leading +), and `concurrencyToken`. A null/omitted phone clears it; changing it resets phone confirmation. Responses return the updated UserDto. Stale tokens return 409; reload before retrying.
+- Email, username, password, account status and role assignments are excluded. Existing role/status endpoints are unchanged.
+- Self updates use existing EF audit metadata; administrative updates additionally record changed field names in security audit without copying personal values.

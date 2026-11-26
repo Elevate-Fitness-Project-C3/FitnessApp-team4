@@ -8,6 +8,7 @@ public static class AuditActions
     public const string RolePermissionsUpdated = "Identity.RolePermissionsUpdated";
     public const string RoleAssigned = "Identity.RoleAssigned";
     public const string RoleRemoved = "Identity.RoleRemoved";
+    public const string UserProfileUpdated = "Identity.UserProfileUpdated";
     public const string UserStatusUpdated = "Identity.UserStatusUpdated";
     public const string AuditGrantCreated = "Identity.AuditGrantCreated";
     public const string AuditGrantRemoved = "Identity.AuditGrantRemoved";
@@ -18,7 +19,7 @@ public static class AuditActions
     public static readonly string[] All =
     [
         RoleCreated, RoleRenamed, RoleDeleted, RolePermissionsUpdated, RoleAssigned, RoleRemoved,
-        UserStatusUpdated, AuditGrantCreated, AuditGrantRemoved, SecurityBootstrap,
+        UserStatusUpdated, UserProfileUpdated, AuditGrantCreated, AuditGrantRemoved, SecurityBootstrap,
         SecurityOperationDenied, SecurityOperationFailed
     ];
 }

@@ -9,7 +9,7 @@ internal sealed class GetUserByIdQueryHandler(AuthDbContext db) : IRequestHandle
         var user = await db.Users.AsNoTracking()
             .Where(x => x.Id == request.UserId)
             .Select(x => new UserDto(x.Id, x.FirstName, x.LastName, x.Email, x.EmailConfirmed, x.PhoneNumber,
-                x.IsActive, x.CreatedAt))
+                x.IsActive, x.CreatedAt, x.ConcurrencyStamp!))
             .SingleOrDefaultAsync(cancellationToken);
 
         if (user is null) return Error.NotFound("Users.NotFound", "User not found.");
