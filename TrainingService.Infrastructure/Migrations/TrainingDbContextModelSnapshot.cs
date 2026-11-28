@@ -160,6 +160,55 @@ namespace TrainingService.Infrastructure.Migrations
                     b.ToTable("ProgramWorkouts");
                 });
 
+            modelBuilder.Entity("TrainingService.Domain.UserTrainingPrograms.UserTrainingProgram", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<Guid>("ProgramId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StoppedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProgramId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[Status] = 1 AND [IsDeleted] = 0");
+
+                    b.ToTable("UserTrainingPrograms", (string)null);
+                });
+
             modelBuilder.Entity("TrainingService.Domain.Workouts.Workout", b =>
                 {
                     b.Property<Guid>("Id")
@@ -261,6 +310,15 @@ namespace TrainingService.Infrastructure.Migrations
                     b.Navigation("Program");
 
                     b.Navigation("Workout");
+                });
+
+            modelBuilder.Entity("TrainingService.Domain.UserTrainingPrograms.UserTrainingProgram", b =>
+                {
+                    b.HasOne("TrainingService.Domain.Programs.Program", null)
+                        .WithMany()
+                        .HasForeignKey("ProgramId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("TrainingService.Domain.Workouts.WorkoutExercise", b =>

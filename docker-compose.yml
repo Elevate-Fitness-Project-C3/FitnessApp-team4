@@ -75,18 +75,25 @@ services:
       sql-server:
         condition: service_healthy
     networks: [fitness-network]
-
+  
   training-service:
     build:
       context: .
       dockerfile: TrainingService.Api/Dockerfile
+    
     environment:
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__DefaultConnection: "${TRAINING_CONNECTION_STRING:-}"
+      
+      Jwt__Issuer: "IdentityService"
+      Jwt__Audience: "${IDENTITY_JWT_AUDIENCE:?Set IDENTITY_JWT_AUDIENCE in .env}"
+      Jwt__JwksUrl: "http://identity-service:8080/.well-known/jwks.json"
+    
     depends_on:
       sql-server:
         condition: service_healthy
-    networks: [fitness-network]
+    
+    networks: [ fitness-network ]
 
   sql-server:
     image: mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04

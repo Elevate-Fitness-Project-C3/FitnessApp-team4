@@ -1,0 +1,3 @@
+namespace TrainingService.Application.UserTrainingProgram.Orchestrator.StartUserTrainingProgram;
+
+public record StartUserTrainingProgramRequest(Guid ProgramId);
